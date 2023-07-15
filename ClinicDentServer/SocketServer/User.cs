@@ -81,12 +81,18 @@ namespace ClinicDentServer.SocketServer
                     leaveDetected();
                     return;
                 }
+                if (bytesRec <= 0)
+                {
+                    leaveDetected();
+                    return;
+                }
                 // Decode the received bytes into characters
                 int charCount = utf8Decoder.GetCharCount(bytesIn, 0, bytesRec);
                 char[] chars = new char[charCount];
                 utf8Decoder.GetChars(bytesIn, 0, bytesRec, chars, 0);
                 stringIn += new string(chars);
-                if (stringIn.Length > 200)
+
+                if (stringIn.Length > 2000)
                 {
                     leaveDetected();
                     return;
@@ -115,6 +121,7 @@ namespace ClinicDentServer.SocketServer
                     {
                         return;
                     }
+
                     bytesRec = Socket.Receive(bytesIn);
                 }
                 catch
@@ -123,11 +130,18 @@ namespace ClinicDentServer.SocketServer
                     leaveDetected();
                     return;
                 }
+                if (bytesRec <= 0)
+                {
+                    leaveDetected();
+                    return;
+                }
                 // Decode the received bytes into characters
+
                 int charCount = utf8Decoder.GetCharCount(bytesIn, 0, bytesRec);
                 char[] chars = new char[charCount];
                 utf8Decoder.GetChars(bytesIn, 0, bytesRec, chars, 0);
                 stringIn += new string(chars);
+
                 if (stringIn.EndsWith(packetDeleimeter))
                 {
                     presplitArray = stringIn.Split(new char[] { packetDeleimeter[0] }, StringSplitOptions.RemoveEmptyEntries);
@@ -196,34 +210,37 @@ namespace ClinicDentServer.SocketServer
             }
         }
 
-
-
-
         #region Answers
         private void answerScheduleUpdateRecordComment(string recordIdStr, string newComment)
         {
+            int recordId = Int32.Parse(recordIdStr);
             ClinicContext db = new ClinicContext(ConnectionString);
-            db.Database.ExecuteSqlRaw("UPDATE Schedule SET Comment={0} WHERE Id={1}", newComment, recordIdStr);
+            Schedule schedule = db.Schedules.FirstOrDefault(x => x.Id == recordId);
+            schedule.Comment = newComment;
+            db.SaveChanges();
             lock (Server.UsersLocker)
             {
                 foreach (User user in Server.Users)
                 {
                     if (user != this)
-                        user.send("scheduleRecordCommentUpdated", recordIdStr, newComment);
+                        user.send("scheduleRecordCommentUpdated", recordIdStr, newComment, schedule.StartDatetime.ToString(DateStringPattern), schedule.CabinetId.ToString());
                 }
             }
             db.Dispose();
         }
         private void answerScheduleUpdateRecordState(string recordIdStr, string newState)
         {
+            int recordId = Int32.Parse(recordIdStr);
             ClinicContext db = new ClinicContext(ConnectionString);
-            db.Database.ExecuteSqlRaw("UPDATE Schedule SET State={0} WHERE Id={1}", newState, recordIdStr);
+            Schedule schedule = db.Schedules.FirstOrDefault(x => x.Id == recordId);
+            schedule.State = (SchedulePatientState)Int32.Parse(newState);
+            db.SaveChanges();
             lock (Server.UsersLocker)
             {
                 foreach (User user in Server.Users)
                 {
                     if (user != this)
-                        user.send("scheduleRecordStateUpdated", recordIdStr, newState);
+                        user.send("scheduleRecordStateUpdated", recordIdStr, newState, schedule.StartDatetime.ToString(DateStringPattern), schedule.CabinetId.ToString());
                 }
             }
             db.Dispose();
@@ -245,7 +262,7 @@ namespace ClinicDentServer.SocketServer
                 foreach (User user in Server.Users)
                 {
                     if (user != this)
-                        user.send("scheduleRecordUpdated", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
+                        user.send("scheduleRecordUpdated", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
                 }
             }
             db.Dispose();
@@ -289,7 +306,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
+                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend,scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
                 }
             }
             db.Dispose();
@@ -298,10 +315,7 @@ namespace ClinicDentServer.SocketServer
         {
             send("clientOutOfDate");
         }
-        private void EndSessionNewLogin()
-        {
-            send("sessionEndedNewLogin");
-        }
+
         public void logining(string jwtToken)
         {
             ///decode jwt token, receive Email and ConnectionString
@@ -328,17 +342,6 @@ namespace ClinicDentServer.SocketServer
                 return;
             }
             timerUntilDisconnect.Stop();
-            lock (Server.UsersLocker)
-            {
-                for (int i = 0; i < Server.Users.Count; ++i)
-                {
-                    if (Server.Users[i].user.Id == doctorUser.Id)
-                    {
-                        Server.Users[i].EndSessionNewLogin();
-                        break;
-                    }
-                }
-            }
             user = doctorUser;
             ConnectionString = claimsPrincipal.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value;
             lock (Server.UsersLocker)

@@ -148,5 +148,23 @@ namespace ClinicDentServer.Controllers
             db.Dispose();
             return Ok(stageAssets);
         }
+        [HttpPost("stageAsset")]
+        [Produces("text/plain")]
+        public async Task<ActionResult<int>> Post(StageAsset stageAsset)
+        {
+            stageAsset.Id = 0;
+            ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
+            try
+            {
+                db.StageAssets.Add(stageAsset);
+                await db.SaveChangesAsync();
+            }
+            finally
+            {
+                db?.Dispose();
+            }
+
+            return Ok(stageAsset.Id);
+        }
     }
 }

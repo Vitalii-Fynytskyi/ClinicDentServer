@@ -1,4 +1,4 @@
-using ClinicDentServer.Hubs;
+using ClinicDentServer.OutputFormatters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System;
 using WebApiContrib.Core.Formatter.Bson;
 
 namespace ClinicDentServer
@@ -43,11 +42,12 @@ namespace ClinicDentServer
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ClinicDentServer", Version = "v1" });
             });
-            services.AddControllers(o => o.InputFormatters.Insert(o.InputFormatters.Count, new InputFormatters.TextPlainInputFormatter()));
+            services.AddControllers(o =>
+            {
+                o.OutputFormatters.Add(new TextPlainOutputFormatter());
+                o.InputFormatters.Insert(o.InputFormatters.Count, new InputFormatters.TextPlainInputFormatter());
+            });
             services.AddMvc().AddBsonSerializerFormatters();
-            services.AddSignalR(hubOptions=>
-                hubOptions.ClientTimeoutInterval = TimeSpan.FromMinutes(5)
-            );
 
             services.Configure<IISServerOptions>(options =>
             {
@@ -70,7 +70,6 @@ namespace ClinicDentServer
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                endpoints.MapHub<ScheduleHub>("api/scheduleHub");
             });
         }
     }

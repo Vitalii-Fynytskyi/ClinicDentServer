@@ -1,18 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using ClinicDentServer.Models;
 using ClinicDentServer.ViewModels;
-using ClinicDentServer.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using System.IdentityModel.Tokens.Jwt;
-using Microsoft.IdentityModel.Tokens;
-using System.Diagnostics;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace ClinicDentServer.Controllers
 {
@@ -33,20 +28,6 @@ namespace ClinicDentServer.Controllers
             }
             usersDb.Dispose();
             return BadRequest(new { errorText = "Invalid username or password." });
-        }
-        [HttpGet("test")]
-        public async Task<ActionResult<string>> TestRequest()
-        {
-            Process process = new Process();
-            // Configure the process using the StartInfo properties.
-            process.StartInfo.FileName = "C:\\AcumaticaReportLauncher\\AcumaticaReportLauncher.exe";
-            process.StartInfo.Arguments = $"ACTUAL 032018 032019";
-            process.StartInfo.WindowStyle = ProcessWindowStyle.Maximized;
-            bool isStarted = process.Start();
-
-            process.WaitForExit();// Waits here for the process to exit.
-            await Task.CompletedTask;
-            return Ok("Lalala");
         }
         //[HttpPost("register")]
         //public async Task<ActionResult<DoctorDTO>> Register(RegisterModel model)

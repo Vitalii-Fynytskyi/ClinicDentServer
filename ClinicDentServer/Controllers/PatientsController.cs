@@ -189,7 +189,7 @@ namespace ClinicDentServer.Controllers
             ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
 
             Doctor doctor = await db.Doctors.FirstOrDefaultAsync(d => d.Id == doctorId);
-            if (User.Identity.Name != doctor.Email || page <= 0)
+            if (page <= 0)
             {
                 db.Dispose();
                 return BadRequest();
