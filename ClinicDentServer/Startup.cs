@@ -1,4 +1,6 @@
+using ClinicDentServer.InputFormatters;
 using ClinicDentServer.OutputFormatters;
+using ClinicDentServer.BsonFormatter;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -6,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using WebApiContrib.Core.Formatter.Bson;
 
 namespace ClinicDentServer
 {
@@ -44,10 +45,13 @@ namespace ClinicDentServer
             });
             services.AddControllers(o =>
             {
+                o.RespectBrowserAcceptHeader = true;
                 o.OutputFormatters.Add(new TextPlainOutputFormatter());
-                o.InputFormatters.Insert(o.InputFormatters.Count, new InputFormatters.TextPlainInputFormatter());
+                o.InputFormatters.Add(new TextPlainInputFormatter());
+                
+                o.InputFormatters.Add(new BsonInputFormatter());
+                o.OutputFormatters.Add(new BsonOutputFormatter());
             });
-            services.AddMvc().AddBsonSerializerFormatters();
 
             services.Configure<IISServerOptions>(options =>
             {
