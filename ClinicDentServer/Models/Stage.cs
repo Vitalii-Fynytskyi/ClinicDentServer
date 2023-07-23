@@ -1,8 +1,7 @@
-﻿using System;
+﻿using ClinicDentServer.Exceptions;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Globalization;
 
 namespace ClinicDentServer.Models
 {
@@ -19,7 +18,16 @@ namespace ClinicDentServer.Models
             DoctorId = s.DoctorId;
             ScheduleId = s.ScheduleId;
             Title = s.Title;
-            StageDatetime = s.StageDatetime;
+            IsSentViaViber = s.IsSentViaViber;
+            bool isValid = DateTime.TryParseExact(s.StageDatetime, Options.DateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
+            if (isValid)
+            {
+                StageDatetime = result;
+            }
+            else
+            {
+                throw new NotValidException($"'{s.StageDatetime}' datetime is not in correct format");
+            }
             OperationId = s.Operation;
             BondId = s.Bond;
             DentinId = s.Dentin;
@@ -44,7 +52,8 @@ namespace ClinicDentServer.Models
 
 
         public string Title { get; set; }
-        public string StageDatetime { get; set; }
+        public DateTime StageDatetime { get; set; }
+        public bool IsSentViaViber { get; set; }
         public int? OperationId { get; set; }
         public StageAsset Operation { get; set; } //'Реставрація' 'Плом. каналів' 'Цементування коронок'
 
@@ -101,7 +110,8 @@ namespace ClinicDentServer.Models
             DoctorId = s.DoctorId;
             ScheduleId = s.ScheduleId;
             Title = s.Title;
-            StageDatetime = s.StageDatetime;
+            IsSentViaViber = s.IsSentViaViber;
+            StageDatetime = s.StageDatetime.ToString(Options.DateTimePattern);
             Operation = s.OperationId;
             Bond = s.BondId;
             Dentin = s.DentinId;
@@ -123,7 +133,7 @@ namespace ClinicDentServer.Models
         public int DoctorId { get; set; }
         public int? ScheduleId { get; set; }
 
-
+        public bool IsSentViaViber { get; set; }
         public string Title { get; set; }
         public string StageDatetime { get; set; }
         public int? Operation { get; set; } //'Реставрація' 'Плом. каналів' 'Цементування коронок'

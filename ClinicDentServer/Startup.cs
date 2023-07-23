@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using ClinicDentServer.Filters;
 
 namespace ClinicDentServer
 {
@@ -38,7 +39,10 @@ namespace ClinicDentServer
                             ValidateIssuerSigningKey = true,
                         };
                     });
-            services.AddControllers();
+            services.AddControllers((options) =>
+            {
+                options.Filters.Add(typeof(ApplicationExceptionFilterAttribute));
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ClinicDentServer", Version = "v1" });

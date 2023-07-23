@@ -18,15 +18,15 @@ namespace ClinicDentServer.Controllers
         [HttpGet("getAll")]
         public async Task<ActionResult<IEnumerable<DoctorDTO>>> GetAll()
         {
-            ClinicContext clinicContext = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
-
-            DoctorDTO[] doctors = await clinicContext.Doctors.AsNoTracking().Select(i => new DoctorDTO()
+            using(ClinicContext clinicContext = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Id = i.Id,
-                Name = i.Name,
-            }).ToArrayAsync();
-            clinicContext.Dispose();
-            return Ok(doctors);
+                DoctorDTO[] doctors = await clinicContext.Doctors.AsNoTracking().Select(i => new DoctorDTO()
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                }).ToArrayAsync();
+                return Ok(doctors);
+            }
         }
     }
 }
