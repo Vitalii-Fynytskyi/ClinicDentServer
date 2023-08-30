@@ -7,5 +7,7 @@ namespace ClinicDentServer.Models
         public int Id { get; set; }
         public string CabinetName { get; set; }
         public virtual ICollection<Schedule> Schedules { get; set; }
+        public virtual ICollection<CabinetComment> CabinetComments { get; set; }
+
     }
 }

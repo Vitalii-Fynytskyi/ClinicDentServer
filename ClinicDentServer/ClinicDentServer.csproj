@@ -13,10 +13,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="sql queries\CreateTrigger_CabinetDeleted.sql" />
+    <None Remove="sql queries\CreateTrigger_DoctorDeleted.sql" />
+    <None Remove="sql queries\CreateTrigger_PatientDeleted.sql" />
     <None Remove="sql queries\CreateTrigger_StageAssetDeleted.sql" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="sql queries\CreateTrigger_PatientDeleted.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="sql queries\CreateTrigger_StageAssetDeleted.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -29,6 +35,15 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="5.0.9" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="sql queries\CreateTrigger_CabinetDeleted.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="sql queries\CreateTrigger_DoctorDeleted.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

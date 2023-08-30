@@ -155,5 +155,14 @@ namespace ClinicDentServer.Controllers
             }
            
         }
+        [HttpGet("sentViaMessager/{stageId:int}/{mark:int}")]
+        public async Task<ActionResult> SentViaMessager(int stageId, int mark)
+        {
+            using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            {
+                await db.Database.ExecuteSqlRawAsync($"UPDATE [Stages] SET [IsSentViaViber]={mark} WHERE [Id]={stageId}");
+                return Ok();
+            }
+        }
     }
 }

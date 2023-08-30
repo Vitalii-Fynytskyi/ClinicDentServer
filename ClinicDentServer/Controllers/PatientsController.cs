@@ -1,5 +1,6 @@
 ﻿using ClinicDentServer.Exceptions;
 using ClinicDentServer.Models;
+using ClinicDentServer.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -691,9 +692,5 @@ namespace ClinicDentServer.Controllers
             }
         }
     }
-    public class ChangeCurePlanRequest
-    {
-        public int PatientId { get; set; }
-        public string CurePlan { get; set;}
-    }
+    
 }

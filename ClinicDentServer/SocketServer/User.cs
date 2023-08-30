@@ -1,7 +1,9 @@
-﻿using ClinicDentServer.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using ClinicDentServer.Dto;
+using ClinicDentServer.Models;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.Diagnostics;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Sockets;
@@ -43,6 +45,7 @@ namespace ClinicDentServer.SocketServer
         public System.Timers.Timer timerUntilDisconnect { get; set; }
         public User(Server server, Socket socket)
         {
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             bytesIn = new byte[1024];
             socketLocker = new object();
             Server = server;
@@ -124,8 +127,9 @@ namespace ClinicDentServer.SocketServer
 
                     bytesRec = Socket.Receive(bytesIn);
                 }
-                catch
+                catch(Exception e)
                 {
+                    Debug.WriteLine(e.Message);
                     Server.PrintMessage("User disconnected");
                     leaveDetected();
                     return;
@@ -185,6 +189,9 @@ namespace ClinicDentServer.SocketServer
             }
             switch (splStr[0])
             {
+                case "p":
+                    answerPing();
+                    break;
                 case "login":
                     logining(splStr[1]);
                     break;
@@ -203,6 +210,9 @@ namespace ClinicDentServer.SocketServer
                 case "scheduleUpdateRecordComment":
                     answerScheduleUpdateRecordComment(splStr[1], splStr[2]);
                     break;
+                case "scheduleUpdateCabinetComment":
+                    answerScheduleUpdateCabinetComment(splStr[1], splStr[2], splStr[3]);
+                    break;
                 default:
                     leaveDetected();
                     break;
@@ -210,7 +220,51 @@ namespace ClinicDentServer.SocketServer
             }
         }
 
+
+
         #region Answers
+        private void answerPing()
+        {
+            send("p");
+        }
+
+        private void answerScheduleUpdateCabinetComment(string date, string cabinetIdStr, string newComment)
+        {
+            bool isValid = DateTime.TryParseExact(date, Options.DateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
+            if (isValid == false)
+            {
+                return;
+            }
+            int cabinetId = Int32.Parse(cabinetIdStr);
+            using (ClinicContext db = new ClinicContext(ConnectionString))
+            {
+                CabinetComment existingCabinetComment = db.CabinetComments.FirstOrDefault(c => c.CabinetId == cabinetId && result.Date == c.Date.Date);
+                if (existingCabinetComment != null)
+                {
+                    existingCabinetComment.CommentText = newComment;
+                    db.SaveChanges();
+                }
+                else
+                {
+                    CabinetComment newCabinetComment = new CabinetComment()
+                    {
+                        CabinetId = cabinetId,
+                        Date = result,
+                        CommentText = newComment
+                    };
+                    db.CabinetComments.Add(newCabinetComment);
+                    db.SaveChanges();
+                }
+                lock (Server.UsersLocker)
+                {
+                    foreach (User user in Server.Users)
+                    {
+                        if (user != this)
+                            user.send("scheduleCabinetCommentUpdated", date, cabinetIdStr, newComment);
+                    }
+                }
+            }
+        }
         private void answerScheduleUpdateRecordComment(string recordIdStr, string newComment)
         {
             int recordId = Int32.Parse(recordIdStr);

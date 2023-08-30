@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace ClinicDentServer.Models
 {
@@ -22,6 +19,8 @@ namespace ClinicDentServer.Models
 
         public byte[] ImageBytes { get; set; }
         public virtual ICollection<Stage> Stages { get; private set; }
+        public virtual ICollection<Schedule> Schedules { get; private set; }
+
         public Patient()
         {
             Stages = new List<Stage>();
@@ -41,6 +40,7 @@ namespace ClinicDentServer.Models
             ImageBytes = p.ImageBytes;
             CurePlan= p.CurePlan;
             Stages = new List<Stage>();
+            Schedules = new List<Schedule>();
         }
     }
     public class PatientDTO

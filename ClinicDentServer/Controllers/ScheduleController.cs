@@ -1,5 +1,8 @@
-﻿using ClinicDentServer.Exceptions;
+﻿using ClinicDentServer.Dto;
+using ClinicDentServer.Exceptions;
 using ClinicDentServer.Models;
+using ClinicDentServer.RequestCustomAnswers;
+using ClinicDentServer.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +20,7 @@ namespace ClinicDentServer.Controllers
     public class ScheduleController : ControllerBase
     {
         [HttpGet("getRecordsForDay/{datetime}/{tableNumber}")]
-        public async Task<ActionResult<IEnumerable<ScheduleDTO>>> GetRecordsForDay(string datetime,int tableNumber)
+        public async Task<ActionResult<ScheduleRecordsForDayInCabinet>> GetRecordsForDay(string datetime,int tableNumber)
         {
             DateTime targetDt;
             if (DateTime.TryParse(datetime, out targetDt) == false)
@@ -27,19 +30,56 @@ namespace ClinicDentServer.Controllers
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 ScheduleDTO[] schedules = await db.Schedules.Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => (targetDt.Date == s.StartDatetime.Date && s.CabinetId == tableNumber)).Select(s => new ScheduleDTO(s)).ToArrayAsync();
-                return Ok(schedules);
-            }
-            
-        }
-        [HttpGet("getRelatedStages/{scheduleId}")]
-        public async Task<ActionResult<IEnumerable<StageDTO>>> GetRelatedStages(int scheduleId)
-        {
-            using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
-            {
-                StageDTO[] relatedStages = await db.Stages.Include(s => s.Doctor).Where((s) => s.ScheduleId == scheduleId).Select(s => new StageDTO(s)).ToArrayAsync();
-                return Ok(relatedStages);
-            }
 
+
+                // Fetch relevant stages from the database first
+                var stagesList = db.Stages
+                    .Where(s => s.StageDatetime.Date==targetDt.Date)
+                    .ToList();
+
+                // Now, group and aggregate in-memory
+                var stagesInfo = stagesList
+                    .GroupBy(s => s.PatientId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g =>
+                        (
+                            isAllSentViaMessager: !g.Any(s => s.IsSentViaViber == false),
+                            totalPaid: g.Sum(s => s.Payed),
+                            totalPrice: g.Sum(s => s.Price)
+                        )
+                    );
+
+                // Assign the aggregated data to the schedules
+                for(int i =0;i<schedules.Length;i++)
+                {
+                    if (stagesInfo.TryGetValue(schedules[i].PatientId.Value, out var info))
+                    {
+                        schedules[i].StagesSentViaMessagerState = info.isAllSentViaMessager == true ?ScheduleIsSentViaMessagetState.AllSent : ScheduleIsSentViaMessagetState.CanSend;
+                        schedules[i].StagesPaidSum = info.totalPaid;
+                        schedules[i].StagesPriceSum = info.totalPrice;
+                    }
+                    else
+                    {
+                        // In case there are no stages for the given schedule
+                        schedules[i].StagesSentViaMessagerState = ScheduleIsSentViaMessagetState.NoStages;
+                        schedules[i].StagesPaidSum = 0;
+                        schedules[i].StagesPriceSum = 0;
+                    }
+                }
+                CabinetComment cabinetComment = db.CabinetComments.FirstOrDefault(c => c.Date == targetDt && c.CabinetId == tableNumber);
+                string cabinetCommentStr = null;
+                if(cabinetComment != null)
+                {
+                    cabinetCommentStr = cabinetComment.CommentText;
+                }
+                ScheduleRecordsForDayInCabinet scheduleRecordsForDayInCabinet = new ScheduleRecordsForDayInCabinet()
+                {
+                    Schedules = schedules,
+                    CabinetComment = cabinetCommentStr
+                };
+                return Ok(scheduleRecordsForDayInCabinet);
+            }
             
         }
         //PUT api/patients
@@ -95,6 +135,42 @@ namespace ClinicDentServer.Controllers
                 return Ok(cabinets);
             }
             
+        }
+        [HttpPut("weekMoneySummary")]
+        public async Task<ActionResult<WeekMoneySummaryRequestAnswer>> GetWeekMoneySummary(WeekMoneySummaryRequest r)
+        {
+            using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            {
+
+                int?[] schedulePatientIds = await db.Schedules.Where(s => s.CabinetId == r.CabinetId && s.StartDatetime.Date <= r.AnySunday.Date && s.StartDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6)).Select(s=>s.PatientId).ToArrayAsync();
+                // Fetch relevant stages from the database first
+                var stagesList = db.Stages
+                    .Where(s => s.StageDatetime.Date <= r.AnySunday.Date && s.StageDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6))
+                    .ToList();
+
+                // Now, group and aggregate in-memory
+                var stagesInfo = stagesList
+                    .GroupBy(s => s.PatientId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g =>
+                        (
+                            totalPaid: g.Sum(s => s.Payed),
+                            totalPrice: g.Sum(s => s.Price)
+                        )
+                    );
+                WeekMoneySummaryRequestAnswer answer = new WeekMoneySummaryRequestAnswer();
+                // Assign the aggregated data to the schedules
+                for (int i = 0; i < schedulePatientIds.Length; i++)
+                {
+                    if (stagesInfo.TryGetValue(schedulePatientIds[i].Value, out var info))
+                    {
+                        answer.PaidSum = info.totalPaid;
+                        answer.PriceSum = info.totalPrice;
+                    }
+                }
+                return Ok(answer);
+            }
         }
     }
 }

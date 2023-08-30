@@ -16,7 +16,6 @@ namespace ClinicDentServer.Models
             Id = s.Id;
             PatientId = s.PatientId;
             DoctorId = s.DoctorId;
-            ScheduleId = s.ScheduleId;
             Title = s.Title;
             IsSentViaViber = s.IsSentViaViber;
             bool isValid = DateTime.TryParseExact(s.StageDatetime, Options.DateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
@@ -48,7 +47,6 @@ namespace ClinicDentServer.Models
         public int Id { get; set; }
         public int PatientId { get; set; }
         public int DoctorId { get; set; }
-        public int? ScheduleId { get; set; }
 
 
         public string Title { get; set; }
@@ -108,7 +106,6 @@ namespace ClinicDentServer.Models
             Id = s.Id;
             PatientId = s.PatientId;
             DoctorId = s.DoctorId;
-            ScheduleId = s.ScheduleId;
             Title = s.Title;
             IsSentViaViber = s.IsSentViaViber;
             StageDatetime = s.StageDatetime.ToString(Options.DateTimePattern);
@@ -131,7 +128,6 @@ namespace ClinicDentServer.Models
         public int Id { get; set; }
         public int PatientId { get; set; }
         public int DoctorId { get; set; }
-        public int? ScheduleId { get; set; }
 
         public bool IsSentViaViber { get; set; }
         public string Title { get; set; }

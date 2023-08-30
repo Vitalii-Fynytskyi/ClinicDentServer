@@ -14,6 +14,10 @@ namespace ClinicDentServer.Models
 
         public string Name { get; set; }
         public virtual IEnumerable<Stage> Stages { get; set; }
+        public virtual IEnumerable<Image> Images { get; set; }
+
+        public virtual IEnumerable<Schedule> Schedules { get; set; }
+
 
     }
     public class DoctorDTO
