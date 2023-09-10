@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json.Bson;
-using Microsoft.AspNetCore.Mvc.Formatters;
+﻿using Microsoft.AspNetCore.Mvc.Formatters;
+using Newtonsoft.Json.Bson;
 using System;
-using System.IO;
+using System.Collections;
 using System.Threading.Tasks;
 
 namespace ClinicDentServer.BsonFormatter
@@ -29,5 +29,9 @@ namespace ClinicDentServer.BsonFormatter
             // or if the type directly converts to a BsonType.
             return base.CanReadType(type);
         }
+        //protected override bool CanReadType(Type type)
+        //{
+        //    return typeof(IEnumerable).IsAssignableFrom(type);
+        //}
     }
 }

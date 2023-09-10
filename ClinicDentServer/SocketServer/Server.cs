@@ -52,5 +52,28 @@ namespace ClinicDentServer.SocketServer
                 u.leaveDetected();
             }
         }
+        public void SendToAll(params string[] param)
+        {
+            lock (UsersLocker)
+            {
+                foreach (User u in Users)
+                {
+                    u.send(param);
+                }
+            }
+        }
+        public void SendToAllExcept(string exceptEmail,params string[] param)
+        {
+            lock (UsersLocker)
+            {
+                foreach (User u in Users)
+                {
+                    if(u.user != null && u.user.Email != exceptEmail)
+                    {
+                        u.send(param);
+                    }
+                }
+            }
+        }
     }
 }

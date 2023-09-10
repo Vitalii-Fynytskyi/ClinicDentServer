@@ -82,6 +82,15 @@ namespace ClinicDentServer.Controllers
             }
             
         }
+        [HttpGet("getPatientFutureAppointments/{patientId:int}")]
+        public async Task<ActionResult<IEnumerable<ScheduleDTO>>> GetPatientFutureAppointments(int patientId)
+        {
+            using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            {
+                ScheduleDTO[] schedules = await db.Schedules.Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => s.PatientId==patientId && s.StartDatetime.Date>=DateTime.Now.Date).OrderBy(s=>s.StartDatetime).Select(s => new ScheduleDTO(s)).ToArrayAsync();
+                return Ok(schedules);
+            }
+        }
         //PUT api/patients
         [HttpPut]
         public async Task<ActionResult<ScheduleDTO>> Put(ScheduleDTO scheduleDTO)
@@ -142,7 +151,7 @@ namespace ClinicDentServer.Controllers
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
 
-                int?[] schedulePatientIds = await db.Schedules.Where(s => s.CabinetId == r.CabinetId && s.StartDatetime.Date <= r.AnySunday.Date && s.StartDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6)).Select(s=>s.PatientId).ToArrayAsync();
+                int?[] schedulePatientIds = await db.Schedules.Where(s => s.CabinetId == r.CabinetId && s.StartDatetime.Date <= r.AnySunday.Date && s.StartDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6)).Select(s=>s.PatientId).Distinct().ToArrayAsync();
                 // Fetch relevant stages from the database first
                 var stagesList = db.Stages
                     .Where(s => s.StageDatetime.Date <= r.AnySunday.Date && s.StageDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6))
@@ -165,8 +174,8 @@ namespace ClinicDentServer.Controllers
                 {
                     if (stagesInfo.TryGetValue(schedulePatientIds[i].Value, out var info))
                     {
-                        answer.PaidSum = info.totalPaid;
-                        answer.PriceSum = info.totalPrice;
+                        answer.PaidSum += info.totalPaid;
+                        answer.PriceSum += info.totalPrice;
                     }
                 }
                 return Ok(answer);

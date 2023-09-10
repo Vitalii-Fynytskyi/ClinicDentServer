@@ -1,10 +1,12 @@
 ﻿using ClinicDentServer.Models;
+using ClinicDentServer.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace ClinicDentServer.Controllers
@@ -85,33 +87,73 @@ namespace ClinicDentServer.Controllers
             }
         }
         [HttpPut]
-        public async Task<ActionResult<StageDTO>> Put(StageDTO stageDTO)
+        public async Task<ActionResult> Put(StageDTO stageDTO)
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 Stage stageToDb = new Stage(stageDTO);
                 db.Stages.Update(stageToDb);
                 await db.SaveChangesAsync();
-                return Ok(stageDTO);
+                return NoContent();
+            }
+        }
+        [HttpPut("putMany")]
+        public async Task<ActionResult> PutMany(PutStagesRequest putStagesRequest)
+        {
+            //convert dtos to database entities
+            List<Stage> dbStages = putStagesRequest.stageDTO.Select(dto => new Stage(dto)).ToList();
+            ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
+            try
+            {
+                db.Stages.UpdateRange(dbStages);
+                await db.SaveChangesAsync();
+                return NoContent();
+            }
+            finally
+            {
+                db.Dispose();
+                StringBuilder stringBuilder = new StringBuilder(32);
+                for(int i =0; i < dbStages.Count; i++)
+                {
+                    if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed)
+                    {
+                        int priceDifference = putStagesRequest.stageDTO[i].Price - putStagesRequest.stageDTO[i].OldPrice;
+                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed;
+
+                        stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId}");
+                    }
+                }
+                Program.TcpServer.SendToAll("stagePayInfoUpdated", stringBuilder.ToString());
+
             }
         }
         [HttpDelete("{stageId}")]
-        public async Task<ActionResult<StageDTO>> Delete(int stageId)
+        public async Task<ActionResult> Delete(int stageId)
         {
-            using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
+            Stage stage = null;
+            try
             {
-                Stage stage = db.Stages.Include(s => s.Doctor).FirstOrDefault(s => s.Id == stageId);
+                stage = await db.Stages.FirstOrDefaultAsync(s => s.Id == stageId);
                 if (stage == null)
                 {
                     return NotFound();
                 }
                 db.Stages.Remove(stage);
-                await db.SaveChangesAsync();
-                StageDTO stageDTO = new StageDTO(stage);
-                return Ok(stageDTO);
+                db.SaveChanges();
+                return NoContent();
             }
-
-            
+            finally
+            {
+                db.Dispose();
+                if (stage != null)
+                {
+                    int priceDifference = -stage.Price;
+                    int payedDifference = -stage.Payed;
+                    string stagePayInfo = $"{stage.PatientId},{stage.StageDatetime.ToString(Options.DateTimePattern)},{priceDifference},{payedDifference},{stage.DoctorId}";
+                    Program.TcpServer.SendToAll("stagePayInfoUpdated", stagePayInfo);
+                }
+            }
         }
         [HttpDelete("removePhotoFromStage/{photoId}/{stageId}")]
         public async Task<ActionResult<ImageDTO>> RemovePhotoFromStage(int photoId,int stageId)

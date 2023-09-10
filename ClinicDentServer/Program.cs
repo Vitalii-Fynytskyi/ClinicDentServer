@@ -6,10 +6,11 @@ namespace ClinicDentServer
 {
     public class Program
     {
+        public static Server TcpServer;
         public static void Main(string[] args)
         {
-            Server server = new Server();
-            server.Start();
+            TcpServer = new Server();
+            TcpServer.Start();
             CreateHostBuilder(args).Build().Run();
         }
 

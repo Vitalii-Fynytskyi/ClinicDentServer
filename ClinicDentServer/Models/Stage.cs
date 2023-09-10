@@ -120,7 +120,10 @@ namespace ClinicDentServer.Models
 
             Technician = s.TechnicianId;
             Payed = s.Payed;
+            OldPayed = s.Payed;
             Price = s.Price;
+            OldPrice = s.Price;
+
             CommentText = s.CommentText;
             Pin = s.PinId;
             DoctorName = s.Doctor.Name;
@@ -151,7 +154,11 @@ namespace ClinicDentServer.Models
         public int? Technician { get; set; }
 
         public int Payed { get; set; }
+        public int OldPayed { get; set; }
+
         public int Price { get; set; }
+        public int OldPrice { get; set; }
+
         public string CommentText { get; set; }
         public string DoctorName { get; set; }
     }

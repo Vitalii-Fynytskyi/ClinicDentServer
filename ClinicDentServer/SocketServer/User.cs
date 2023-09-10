@@ -227,7 +227,6 @@ namespace ClinicDentServer.SocketServer
         {
             send("p");
         }
-
         private void answerScheduleUpdateCabinetComment(string date, string cabinetIdStr, string newComment)
         {
             bool isValid = DateTime.TryParseExact(date, Options.DateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
@@ -356,11 +355,29 @@ namespace ClinicDentServer.SocketServer
             {
                 patientIdToSend = scheduleDTO.PatientId.ToString();
             }
+            var stagesForRecord = db.Stages.Where(s => s.PatientId == scheduleDTO.PatientId && s.StageDatetime.Date == schedule.StartDatetime.Date).Select(s=>(new { s.Price, s.Payed,s.IsSentViaViber })).ToArray();
+            int priceSum = 0;
+            int payedSum = 0;
+            ScheduleIsSentViaMessagetState sendViaMessagerState = ScheduleIsSentViaMessagetState.NoStages;
+            for (int i = 0; i < stagesForRecord.Length; i++)
+            {
+                priceSum += stagesForRecord[i].Price;
+                payedSum += stagesForRecord[i].Payed;
+                if (stagesForRecord[i].IsSentViaViber == false)
+                {
+                    sendViaMessagerState = ScheduleIsSentViaMessagetState.CanSend;
+                }
+            }
+            if(stagesForRecord.Length > 0 && sendViaMessagerState == ScheduleIsSentViaMessagetState.NoStages)
+            {
+                sendViaMessagerState = ScheduleIsSentViaMessagetState.AllSent;
+            }
+            string sendViaMessagerStateNumberStr = Convert.ToString((int)sendViaMessagerState);
             lock (Server.UsersLocker)
             {
                 foreach (User user in Server.Users)
                 {
-                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend,scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
+                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), priceSum.ToString(), payedSum.ToString(), sendViaMessagerStateNumberStr);
                 }
             }
             db.Dispose();
@@ -369,7 +386,6 @@ namespace ClinicDentServer.SocketServer
         {
             send("clientOutOfDate");
         }
-
         public void logining(string jwtToken)
         {
             ///decode jwt token, receive Email and ConnectionString
