@@ -21,17 +21,13 @@ namespace ClinicDentServer.Controllers
         {
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Patient patient = await db.Patients.Include(p => p.Stages).ThenInclude(p => p.Doctor).FirstOrDefaultAsync(x => x.Id == patientId);
-                if (patient == null)
-                {
-                    return NotFound();
-                }
-                List<Stage> result = patient.Stages.OrderByDescending(s => s.StageDatetime).ThenByDescending(s => s.Id).ToList();
-                List<StageDTO> resultDTO = new List<StageDTO>(result.Count);
-                foreach (Stage s in result)
-                {
-                    resultDTO.Add(new StageDTO(s));
-                }
+                StageDTO[] resultDTO = await db.Stages.AsNoTracking()
+                                                    .Include(s => s.Doctor)
+                                                    .Where(s => s.PatientId == patientId)
+                                                    .OrderByDescending(s => s.StageDatetime)
+                                                    .ThenByDescending(s => s.Id)
+                                                    .Select(s => new StageDTO(s))
+                                                    .ToArrayAsync();
                 return Ok(resultDTO);
             }
         }
@@ -77,10 +73,10 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Doctor doctor = db.Doctors.FirstOrDefault(d => d.Email == User.Identity.Name);
+                Doctor doctor = await db.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == User.Identity.Name);
                 Stage stageToDb = new Stage(stageDTO);
                 db.Stages.Add(stageToDb);
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 stageDTO.Id = stageToDb.Id;
                 stageDTO.DoctorName = doctor.Name;
                 return Ok(stageDTO);
@@ -115,10 +111,11 @@ namespace ClinicDentServer.Controllers
                 StringBuilder stringBuilder = new StringBuilder(32);
                 for(int i =0; i < dbStages.Count; i++)
                 {
-                    if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed)
+                    if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed || putStagesRequest.stageDTO[i].Expenses!= putStagesRequest.stageDTO[i].OldExpenses)
                     {
+                        int expensesDifference = putStagesRequest.stageDTO[i].Expenses - putStagesRequest.stageDTO[i].OldExpenses;
                         int priceDifference = putStagesRequest.stageDTO[i].Price - putStagesRequest.stageDTO[i].OldPrice;
-                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed;
+                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed - expensesDifference;
 
                         stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId}");
                     }
@@ -149,7 +146,7 @@ namespace ClinicDentServer.Controllers
                 if (stage != null)
                 {
                     int priceDifference = -stage.Price;
-                    int payedDifference = -stage.Payed;
+                    int payedDifference = -(stage.Payed - stage.Expenses);
                     string stagePayInfo = $"{stage.PatientId},{stage.StageDatetime.ToString(Options.DateTimePattern)},{priceDifference},{payedDifference},{stage.DoctorId}";
                     Program.TcpServer.SendToAll("stagePayInfoUpdated", stagePayInfo);
                 }
@@ -180,7 +177,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                List<StageAsset> stageAssets = await db.StageAssets.ToListAsync();
+                List<StageAsset> stageAssets = await db.StageAssets.AsNoTracking().ToListAsync();
                 return Ok(stageAssets);
             }
         }

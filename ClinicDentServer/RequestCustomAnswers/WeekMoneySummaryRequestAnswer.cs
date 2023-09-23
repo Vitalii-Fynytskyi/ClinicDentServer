@@ -1,9 +1,12 @@
-﻿namespace ClinicDentServer.RequestCustomAnswers
+﻿using System.Collections.Generic;
+
+namespace ClinicDentServer.RequestCustomAnswers
 {
     public class WeekMoneySummaryRequestAnswer
     {
-        public int PriceSum { get; set; }
-        public int PaidSum { get; set; }
+        public List<int> StagesPaidSum { get; set; } = new List<int>();
+        public List<int> StagesPriceSum { get; set; } = new List<int>();
+        public List<int> DoctorIds { get; set; } = new List<int>();
 
     }
 }

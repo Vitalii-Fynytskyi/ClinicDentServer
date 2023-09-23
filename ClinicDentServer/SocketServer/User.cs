@@ -355,20 +355,33 @@ namespace ClinicDentServer.SocketServer
             {
                 patientIdToSend = scheduleDTO.PatientId.ToString();
             }
-            var stagesForRecord = db.Stages.Where(s => s.PatientId == scheduleDTO.PatientId && s.StageDatetime.Date == schedule.StartDatetime.Date).Select(s=>(new { s.Price, s.Payed,s.IsSentViaViber })).ToArray();
-            int priceSum = 0;
-            int payedSum = 0;
+            var stagesForRecord = db.Stages.Where(s => s.PatientId == scheduleDTO.PatientId && s.StageDatetime.Date == schedule.StartDatetime.Date).Select(s=>(new { s.Price, s.Payed,s.IsSentViaViber, s.DoctorId, s.Expenses })).ToArray();
             ScheduleIsSentViaMessagetState sendViaMessagerState = ScheduleIsSentViaMessagetState.NoStages;
-            for (int i = 0; i < stagesForRecord.Length; i++)
+
+
+            for (int i = 0; i < stagesForRecord.Length; i++) //loop through records taken from db
             {
-                priceSum += stagesForRecord[i].Price;
-                payedSum += stagesForRecord[i].Payed;
+                bool isDoctorFound = false;
+                for(int j = 0; j < scheduleDTO.DoctorIds.Count; j++) //loop through already calculated records
+                {
+                    if (stagesForRecord[i].DoctorId == scheduleDTO.DoctorIds[j])
+                    {
+                        isDoctorFound = true;
+                        scheduleDTO.StagesPaidSum[j] += stagesForRecord[i].Payed - stagesForRecord[i].Expenses;
+                        scheduleDTO.StagesPriceSum[j] += stagesForRecord[i].Price;
+                    }
+                }
                 if (stagesForRecord[i].IsSentViaViber == false)
                 {
                     sendViaMessagerState = ScheduleIsSentViaMessagetState.CanSend;
                 }
+                if(isDoctorFound) { continue; }
+                //add new if wasn't found
+                scheduleDTO.DoctorIds.Add(stagesForRecord[i].DoctorId);
+                scheduleDTO.StagesPriceSum.Add(stagesForRecord[i].Price);
+                scheduleDTO.StagesPaidSum.Add(stagesForRecord[i].Payed - stagesForRecord[i].Expenses);
             }
-            if(stagesForRecord.Length > 0 && sendViaMessagerState == ScheduleIsSentViaMessagetState.NoStages)
+            if (stagesForRecord.Length > 0 && sendViaMessagerState == ScheduleIsSentViaMessagetState.NoStages)
             {
                 sendViaMessagerState = ScheduleIsSentViaMessagetState.AllSent;
             }
@@ -377,7 +390,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), priceSum.ToString(), payedSum.ToString(), sendViaMessagerStateNumberStr);
+                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), String.Join('|', scheduleDTO.StagesPriceSum), String.Join('|', scheduleDTO.StagesPaidSum), sendViaMessagerStateNumberStr, String.Join('|', scheduleDTO.DoctorIds));
                 }
             }
             db.Dispose();

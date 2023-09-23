@@ -1,12 +1,18 @@
 ﻿using ClinicDentServer.Models;
 using System;
+using System.Collections.Generic;
 
 namespace ClinicDentServer.Dto
 {
     public class ScheduleDTO
     {
-        public ScheduleDTO() { }
-        public ScheduleDTO(Schedule s)
+        public ScheduleDTO()
+        {
+            StagesPaidSum = new List<int>();
+            StagesPriceSum = new List<int>();
+            DoctorIds = new List<int>();
+        }
+        public ScheduleDTO(Schedule s) : this()
         {
             Id = s.Id;
             StartDatetime = s.StartDatetime.ToString("yyyy-MM-dd HH:mm");
@@ -20,8 +26,9 @@ namespace ClinicDentServer.Dto
             CabinetId = s.Cabinet.Id;
 
             State = s.State;
+
         }
-        public ScheduleDTO(string id, string startDateTime, string endDateTime, string comment, string patientId, string doctorId, string patientName, string cabinetId, string cabinetName, string state)
+        public ScheduleDTO(string id, string startDateTime, string endDateTime, string comment, string patientId, string doctorId, string patientName, string cabinetId, string cabinetName, string state):this()
         {
             Id = Int32.Parse(id);
             StartDatetime = startDateTime;
@@ -57,7 +64,8 @@ namespace ClinicDentServer.Dto
         public SchedulePatientState State { get; set; } //0 - unknown, 1 - will appear, 2 - refused
 
         public ScheduleIsSentViaMessagetState StagesSentViaMessagerState { get; set; }
-        public int StagesPaidSum { get; set; }
-        public int StagesPriceSum { get; set; }
+        public List<int> StagesPaidSum { get; set; }
+        public List<int> StagesPriceSum { get; set; }
+        public List<int> DoctorIds { get; set; }
     }
 }

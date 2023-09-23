@@ -21,7 +21,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicDentUsersContext usersDb = new ClinicDentUsersContext(Startup.Configuration["ConnectionStrings:AllUsers"]))
             {
-                DoctorUser doctor = await usersDb.Doctors.FirstOrDefaultAsync(d => d.Email == model.Email && d.Password == model.Password);
+                DoctorUser doctor = await usersDb.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == model.Email && d.Password == model.Password);
                 if (doctor != null)
                 {
                     return GetDoctorDTO(doctor);
@@ -29,27 +29,6 @@ namespace ClinicDentServer.Controllers
                 throw new NotFoundException("Invalid username or password.");
             }
         }
-        //[HttpPost("register")]
-        //public async Task<ActionResult<DoctorDTO>> Register(RegisterModel model)
-        //{
-        //    ClinicDentUsersContext usersDb = new ClinicDentUsersContext(Startup.Configuration["ConnectionStrings:AllUsers"]);
-
-        //    DoctorUser doctor = await usersDb.Doctors.FirstOrDefaultAsync(u => u.Email == model.Email);
-        //    if (doctor == null)
-        //    {
-        //        doctor = new Doctor
-        //        {
-        //            Email = model.Email,
-        //            Password = model.Password,
-        //            Name = model.Name
-        //        };
-        //        db.Doctors.Add(doctor);
-        //        await db.SaveChangesAsync();
-        //        return GetDoctorDTO(doctor);
-
-        //    }
-        //    return BadRequest(new { errorText = "User with such email already exists." });
-        //}
         private ActionResult<DoctorDTO> GetDoctorDTO(DoctorUser doctorUser)
         {
             using(ClinicContext clinicContext = new ClinicContext(Startup.Configuration["ConnectionStrings:" + doctorUser.ConnectionString]))
@@ -57,7 +36,6 @@ namespace ClinicDentServer.Controllers
                 Doctor doctor = clinicContext.Doctors.Find(doctorUser.InternalId);
                 var identity = GetIdentity(doctorUser);
                 var now = DateTime.UtcNow;
-                // створюєм JWT-токен
                 var jwt = new JwtSecurityToken(
                         issuer: AuthOptions.ISSUER,
                         audience: AuthOptions.AUDIENCE,

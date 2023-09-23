@@ -40,6 +40,7 @@ namespace ClinicDentServer.Models
 
             Payed = s.Payed;
             Price = s.Price;
+            Expenses = s.Expenses;
             CommentText = s.CommentText;
             Images = new List<Image>();
 
@@ -92,6 +93,7 @@ namespace ClinicDentServer.Models
 
         public int Payed { get; set; }
         public int Price { get; set; }
+        public int Expenses { get; set; }
         public string CommentText { get; set; }
         public virtual Patient Patient { get; set; }
         public virtual Doctor Doctor { get; set; }
@@ -123,6 +125,8 @@ namespace ClinicDentServer.Models
             OldPayed = s.Payed;
             Price = s.Price;
             OldPrice = s.Price;
+            Expenses=s.Expenses;
+            OldExpenses = s.Expenses;
 
             CommentText = s.CommentText;
             Pin = s.PinId;
@@ -153,11 +157,16 @@ namespace ClinicDentServer.Models
         public int? Calcium { get; set; }
         public int? Technician { get; set; }
 
+
         public int Payed { get; set; }
         public int OldPayed { get; set; }
 
         public int Price { get; set; }
         public int OldPrice { get; set; }
+
+        public int Expenses { get; set; }
+        public int OldExpenses { get; set; }
+
 
         public string CommentText { get; set; }
         public string DoctorName { get; set; }

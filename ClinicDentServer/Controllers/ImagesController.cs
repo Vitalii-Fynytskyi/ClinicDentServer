@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -22,7 +21,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext clinicContext = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                ImageDTO image = await clinicContext.Images.Where(i => i.Id == imageId).Select(i => new ImageDTO()
+                ImageDTO image = await clinicContext.Images.AsNoTracking().Where(i => i.Id == imageId).Select(i => new ImageDTO()
                 {
                     Id = i.Id,
                     FileName = i.FileName,
@@ -44,7 +43,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext clinicContext = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                double countPages = await clinicContext.Images.Where(i => i.DoctorId == doctorId).CountAsync() / Convert.ToDouble(photosPerPage);
+                double countPages = await clinicContext.Images.AsNoTracking().Where(i => i.DoctorId == doctorId).CountAsync() / Convert.ToDouble(photosPerPage);
                 if (countPages - Math.Truncate(countPages) != 0)
                 {
                     countPages = Math.Ceiling(countPages);
@@ -52,7 +51,7 @@ namespace ClinicDentServer.Controllers
                 ImagesToClient imagesToClient = new ImagesToClient();
                 imagesToClient.CountPages = (int)countPages;
 
-                ImageDTO[] imagesFromDb = clinicContext.Images.Where(i => i.DoctorId == doctorId).OrderByDescending(i => i.Id).Skip(photosPerPage * (selectedPage - 1)).Take(photosPerPage).Select(i => new ImageDTO()
+                ImageDTO[] imagesFromDb = clinicContext.Images.AsNoTracking().Where(i => i.DoctorId == doctorId).OrderByDescending(i => i.Id).Skip(photosPerPage * (selectedPage - 1)).Take(photosPerPage).Select(i => new ImageDTO()
                 {
                     Id = i.Id,
                     FileName = i.FileName,
@@ -70,7 +69,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                byte[] originalBytes = await db.Images.Where(i => i.Id == imageId).Select(i => i.OriginalBytes).FirstOrDefaultAsync();
+                byte[] originalBytes = await db.Images.AsNoTracking().Where(i => i.Id == imageId).Select(i => i.OriginalBytes).FirstOrDefaultAsync();
                 if (originalBytes == null)
                 {
                     throw new NotFoundException($"Image with id='{imageId}' cannot be found");

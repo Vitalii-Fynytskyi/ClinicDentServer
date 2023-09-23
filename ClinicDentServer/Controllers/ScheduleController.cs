@@ -19,6 +19,7 @@ namespace ClinicDentServer.Controllers
     [Authorize]
     public class ScheduleController : ControllerBase
     {
+        //TODO rewrite with stored procedure usage
         [HttpGet("getRecordsForDay/{datetime}/{tableNumber}")]
         public async Task<ActionResult<ScheduleRecordsForDayInCabinet>> GetRecordsForDay(string datetime,int tableNumber)
         {
@@ -29,45 +30,61 @@ namespace ClinicDentServer.Controllers
             }
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                ScheduleDTO[] schedules = await db.Schedules.Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => (targetDt.Date == s.StartDatetime.Date && s.CabinetId == tableNumber)).Select(s => new ScheduleDTO(s)).ToArrayAsync();
-
+                ScheduleDTO[] schedules = await db.Schedules.AsNoTracking().Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => (targetDt.Date == s.StartDatetime.Date && s.CabinetId == tableNumber)).Select(s => new ScheduleDTO(s)).ToArrayAsync();
 
                 // Fetch relevant stages from the database first
-                var stagesList = db.Stages
+                var stagesList = db.Stages.AsNoTracking()
                     .Where(s => s.StageDatetime.Date==targetDt.Date)
                     .ToList();
-
-                // Now, group and aggregate in-memory
                 var stagesInfo = stagesList
                     .GroupBy(s => s.PatientId)
                     .ToDictionary(
                         g => g.Key,
-                        g =>
-                        (
-                            isAllSentViaMessager: !g.Any(s => s.IsSentViaViber == false),
-                            totalPaid: g.Sum(s => s.Payed),
-                            totalPrice: g.Sum(s => s.Price)
-                        )
+                        g => g.GroupBy(s => s.DoctorId)
+                              .ToDictionary(
+                                  gg => gg.Key,
+                                  gg => (
+                                      isAllSentViaMessager: !gg.Any(s => s.IsSentViaViber == false),
+                                      totalPaid: gg.Sum(s => s.Payed) - gg.Sum(s=>s.Expenses),
+                                      totalPrice: gg.Sum(s => s.Price)
+                                  )
+                              )
                     );
-
                 // Assign the aggregated data to the schedules
-                for(int i =0;i<schedules.Length;i++)
+                for (int i = 0; i < schedules.Length; i++)
                 {
-                    if (stagesInfo.TryGetValue(schedules[i].PatientId.Value, out var info))
+                    var patientId = schedules[i].PatientId.Value;
+
+                    if (stagesInfo.TryGetValue(patientId, out var patientInfo))
                     {
-                        schedules[i].StagesSentViaMessagerState = info.isAllSentViaMessager == true ?ScheduleIsSentViaMessagetState.AllSent : ScheduleIsSentViaMessagetState.CanSend;
-                        schedules[i].StagesPaidSum = info.totalPaid;
-                        schedules[i].StagesPriceSum = info.totalPrice;
+                        foreach (var doctorInfo in patientInfo)
+                        {
+                            var doctorId = doctorInfo.Key;
+                            var info = doctorInfo.Value;
+
+                            schedules[i].DoctorIds.Add(doctorId);
+                            schedules[i].StagesPaidSum.Add(info.totalPaid);
+                            schedules[i].StagesPriceSum.Add(info.totalPrice);
+                        }
+
+                        // Check if all the doctor's stages are sent via messager; if even one doctor has not sent all, then set the state to "CanSend"
+                        if (patientInfo.Values.All(info => info.isAllSentViaMessager))
+                        {
+                            schedules[i].StagesSentViaMessagerState = ScheduleIsSentViaMessagetState.AllSent;
+                        }
+                        else
+                        {
+                            schedules[i].StagesSentViaMessagerState = ScheduleIsSentViaMessagetState.CanSend;
+                        }
                     }
                     else
                     {
                         // In case there are no stages for the given schedule
                         schedules[i].StagesSentViaMessagerState = ScheduleIsSentViaMessagetState.NoStages;
-                        schedules[i].StagesPaidSum = 0;
-                        schedules[i].StagesPriceSum = 0;
                     }
                 }
-                CabinetComment cabinetComment = db.CabinetComments.FirstOrDefault(c => c.Date == targetDt && c.CabinetId == tableNumber);
+
+                CabinetComment cabinetComment = db.CabinetComments.AsNoTracking().FirstOrDefault(c => c.Date == targetDt && c.CabinetId == tableNumber);
                 string cabinetCommentStr = null;
                 if(cabinetComment != null)
                 {
@@ -87,7 +104,7 @@ namespace ClinicDentServer.Controllers
         {
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                ScheduleDTO[] schedules = await db.Schedules.Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => s.PatientId==patientId && s.StartDatetime.Date>=DateTime.Now.Date).OrderBy(s=>s.StartDatetime).Select(s => new ScheduleDTO(s)).ToArrayAsync();
+                ScheduleDTO[] schedules = await db.Schedules.AsNoTracking().Include(s => s.Patient).Include(s => s.Doctor).Include(s => s.Cabinet).Where(s => s.PatientId==patientId && s.StartDatetime.Date>=DateTime.Now.Date).OrderBy(s=>s.StartDatetime).Select(s => new ScheduleDTO(s)).ToArrayAsync();
                 return Ok(schedules);
             }
         }
@@ -140,7 +157,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Cabinet[] cabinets = await db.Cabinets.ToArrayAsync();
+                Cabinet[] cabinets = await db.Cabinets.AsNoTracking().ToArrayAsync();
                 return Ok(cabinets);
             }
             
@@ -151,34 +168,28 @@ namespace ClinicDentServer.Controllers
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
 
-                int?[] schedulePatientIds = await db.Schedules.Where(s => s.CabinetId == r.CabinetId && s.StartDatetime.Date <= r.AnySunday.Date && s.StartDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6)).Select(s=>s.PatientId).Distinct().ToArrayAsync();
                 // Fetch relevant stages from the database first
-                var stagesList = db.Stages
+                var stagesList = await db.Stages.AsNoTracking()
                     .Where(s => s.StageDatetime.Date <= r.AnySunday.Date && s.StageDatetime.Date >= r.AnySunday.Date - TimeSpan.FromDays(6))
-                    .ToList();
+                    .ToArrayAsync();
 
-                // Now, group and aggregate in-memory
-                var stagesInfo = stagesList
-                    .GroupBy(s => s.PatientId)
-                    .ToDictionary(
-                        g => g.Key,
-                        g =>
-                        (
-                            totalPaid: g.Sum(s => s.Payed),
-                            totalPrice: g.Sum(s => s.Price)
-                        )
-                    );
-                WeekMoneySummaryRequestAnswer answer = new WeekMoneySummaryRequestAnswer();
-                // Assign the aggregated data to the schedules
-                for (int i = 0; i < schedulePatientIds.Length; i++)
+                var groupedStages = stagesList
+                            .GroupBy(s => s.DoctorId)
+                            .ToList();
+                WeekMoneySummaryRequestAnswer weekMoneySummaryRequestAnswer = new WeekMoneySummaryRequestAnswer();
+
+                foreach (var group in groupedStages)
                 {
-                    if (stagesInfo.TryGetValue(schedulePatientIds[i].Value, out var info))
-                    {
-                        answer.PaidSum += info.totalPaid;
-                        answer.PriceSum += info.totalPrice;
-                    }
+                    int doctorId = group.Key;
+                    int totalPaidForDoctor = group.Sum(s => s.Payed) - group.Sum(s=>s.Expenses);
+                    int totalPriceForDoctor = group.Sum(s => s.Price);
+
+                    weekMoneySummaryRequestAnswer.DoctorIds.Add(doctorId);
+                    weekMoneySummaryRequestAnswer.StagesPaidSum.Add(totalPaidForDoctor);
+                    weekMoneySummaryRequestAnswer.StagesPriceSum.Add(totalPriceForDoctor);
                 }
-                return Ok(answer);
+
+                return Ok(weekMoneySummaryRequestAnswer);
             }
         }
     }
