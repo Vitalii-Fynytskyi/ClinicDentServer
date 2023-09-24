@@ -115,9 +115,9 @@ namespace ClinicDentServer.Controllers
                     {
                         int expensesDifference = putStagesRequest.stageDTO[i].Expenses - putStagesRequest.stageDTO[i].OldExpenses;
                         int priceDifference = putStagesRequest.stageDTO[i].Price - putStagesRequest.stageDTO[i].OldPrice;
-                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed - expensesDifference;
+                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed;
 
-                        stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId}");
+                        stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId},{expensesDifference}");
                     }
                 }
                 Program.TcpServer.SendToAll("stagePayInfoUpdated", stringBuilder.ToString());
@@ -146,8 +146,9 @@ namespace ClinicDentServer.Controllers
                 if (stage != null)
                 {
                     int priceDifference = -stage.Price;
-                    int payedDifference = -(stage.Payed - stage.Expenses);
-                    string stagePayInfo = $"{stage.PatientId},{stage.StageDatetime.ToString(Options.DateTimePattern)},{priceDifference},{payedDifference},{stage.DoctorId}";
+                    int payedDifference = -stage.Payed;
+                    int expensesDifference = -stage.Expenses;
+                    string stagePayInfo = $"{stage.PatientId},{stage.StageDatetime.ToString(Options.DateTimePattern)},{priceDifference},{payedDifference},{stage.DoctorId},{expensesDifference}";
                     Program.TcpServer.SendToAll("stagePayInfoUpdated", stagePayInfo);
                 }
             }

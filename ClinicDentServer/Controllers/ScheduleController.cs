@@ -45,8 +45,9 @@ namespace ClinicDentServer.Controllers
                                   gg => gg.Key,
                                   gg => (
                                       isAllSentViaMessager: !gg.Any(s => s.IsSentViaViber == false),
-                                      totalPaid: gg.Sum(s => s.Payed) - gg.Sum(s=>s.Expenses),
-                                      totalPrice: gg.Sum(s => s.Price)
+                                      totalPaid: gg.Sum(s => s.Payed),
+                                      totalPrice: gg.Sum(s => s.Price),
+                                      totalExpenses: gg.Sum(s=>s.Expenses)
                                   )
                               )
                     );
@@ -65,6 +66,8 @@ namespace ClinicDentServer.Controllers
                             schedules[i].DoctorIds.Add(doctorId);
                             schedules[i].StagesPaidSum.Add(info.totalPaid);
                             schedules[i].StagesPriceSum.Add(info.totalPrice);
+                            schedules[i].StagesExpensesSum.Add(info.totalExpenses);
+
                         }
 
                         // Check if all the doctor's stages are sent via messager; if even one doctor has not sent all, then set the state to "CanSend"
@@ -140,13 +143,13 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Schedule schedule = db.Schedules.FirstOrDefault(x => x.Id == id);
+                Schedule schedule = await db.Schedules.FirstOrDefaultAsync(x => x.Id == id);
                 if (schedule == null)
                 {
                     throw new NotFoundException($"Schedule record with id={id} cannot be found");
                 }
                 db.Schedules.Remove(schedule);
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 return NoContent();
             }
 
@@ -181,12 +184,15 @@ namespace ClinicDentServer.Controllers
                 foreach (var group in groupedStages)
                 {
                     int doctorId = group.Key;
-                    int totalPaidForDoctor = group.Sum(s => s.Payed) - group.Sum(s=>s.Expenses);
+                    int totalPaidForDoctor = group.Sum(s => s.Payed);
                     int totalPriceForDoctor = group.Sum(s => s.Price);
+                    int totalExpensesForDoctor = group.Sum(s => s.Expenses);
+
 
                     weekMoneySummaryRequestAnswer.DoctorIds.Add(doctorId);
                     weekMoneySummaryRequestAnswer.StagesPaidSum.Add(totalPaidForDoctor);
                     weekMoneySummaryRequestAnswer.StagesPriceSum.Add(totalPriceForDoctor);
+                    weekMoneySummaryRequestAnswer.StagesExpensesSum.Add(totalExpensesForDoctor);
                 }
 
                 return Ok(weekMoneySummaryRequestAnswer);

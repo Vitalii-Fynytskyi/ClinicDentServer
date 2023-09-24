@@ -10,6 +10,7 @@ namespace ClinicDentServer.Dto
         {
             StagesPaidSum = new List<int>();
             StagesPriceSum = new List<int>();
+            StagesExpensesSum = new List<int>();
             DoctorIds = new List<int>();
         }
         public ScheduleDTO(Schedule s) : this()
@@ -66,6 +67,7 @@ namespace ClinicDentServer.Dto
         public ScheduleIsSentViaMessagetState StagesSentViaMessagerState { get; set; }
         public List<int> StagesPaidSum { get; set; }
         public List<int> StagesPriceSum { get; set; }
+        public List<int> StagesExpensesSum { get; set; }
         public List<int> DoctorIds { get; set; }
     }
 }

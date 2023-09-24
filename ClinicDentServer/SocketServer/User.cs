@@ -367,8 +367,10 @@ namespace ClinicDentServer.SocketServer
                     if (stagesForRecord[i].DoctorId == scheduleDTO.DoctorIds[j])
                     {
                         isDoctorFound = true;
-                        scheduleDTO.StagesPaidSum[j] += stagesForRecord[i].Payed - stagesForRecord[i].Expenses;
+                        scheduleDTO.StagesPaidSum[j] += stagesForRecord[i].Payed;
                         scheduleDTO.StagesPriceSum[j] += stagesForRecord[i].Price;
+                        scheduleDTO.StagesExpensesSum[j] += stagesForRecord[i].Expenses;
+
                     }
                 }
                 if (stagesForRecord[i].IsSentViaViber == false)
@@ -379,7 +381,8 @@ namespace ClinicDentServer.SocketServer
                 //add new if wasn't found
                 scheduleDTO.DoctorIds.Add(stagesForRecord[i].DoctorId);
                 scheduleDTO.StagesPriceSum.Add(stagesForRecord[i].Price);
-                scheduleDTO.StagesPaidSum.Add(stagesForRecord[i].Payed - stagesForRecord[i].Expenses);
+                scheduleDTO.StagesPaidSum.Add(stagesForRecord[i].Payed);
+                scheduleDTO.StagesExpensesSum.Add(stagesForRecord[i].Expenses);
             }
             if (stagesForRecord.Length > 0 && sendViaMessagerState == ScheduleIsSentViaMessagetState.NoStages)
             {
@@ -390,7 +393,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), String.Join('|', scheduleDTO.StagesPriceSum), String.Join('|', scheduleDTO.StagesPaidSum), sendViaMessagerStateNumberStr, String.Join('|', scheduleDTO.DoctorIds));
+                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), String.Join('|', scheduleDTO.StagesPriceSum), String.Join('|', scheduleDTO.StagesPaidSum), sendViaMessagerStateNumberStr, String.Join('|', scheduleDTO.DoctorIds), String.Join('|', scheduleDTO.StagesExpensesSum));
                 }
             }
             db.Dispose();
