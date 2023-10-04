@@ -465,7 +465,7 @@ namespace ClinicDentServer.Controllers
                 PatientsToClient result = new PatientsToClient();
                 Patient[] patientsToReturn = null;
 
-                double countPages = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any())).Count() / Convert.ToDouble(patientsPerPage);
+                double countPages = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).Count() / Convert.ToDouble(patientsPerPage);
                 if (countPages - Math.Truncate(countPages) != 0)
                 {
                     countPages = Math.Ceiling(countPages);
@@ -473,14 +473,13 @@ namespace ClinicDentServer.Controllers
                 switch (sortDescription)
                 {
                     case "Ім'я: від А до Я":
-                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any())).OrderBy(p => p.Name).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).OrderBy(p => p.Name).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "Ім'я: від Я до А":
                         patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any())).OrderByDescending(p => p.Name).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "За замовчуванням":
-                        patientsToReturn = db.Patients.AsNoTracking().
-                            Where(p => (p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId)))
                             .Select(p => new
                             {
                                 Patient = p,
@@ -491,8 +490,7 @@ namespace ClinicDentServer.Controllers
                             .ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "За замовчуванням навпаки":
-                        patientsToReturn = db.Patients.AsNoTracking().
-                            Where(p => (p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId)))
                             .Select(p => new
                             {
                                 Patient = p,
@@ -503,14 +501,14 @@ namespace ClinicDentServer.Controllers
                             .ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "Дата реєстрації: спочатку недавні":
-                        patientsToReturn = db.Patients.AsNoTracking().Where(p => ((p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))).AsEnumerable().Select(x =>
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).AsEnumerable().Select(x =>
                         {
                             DateTime dt;
                             return new { valid = DateTime.TryParse(x.RegisterDate, out dt), date = dt, patient = x };
                         }).OrderByDescending(x => x.date).Select(x => x.patient).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "Дата реєстрації: спочатку старіші":
-                        patientsToReturn = db.Patients.AsNoTracking().Where(p => ((p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))).AsEnumerable().Select(x =>
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).AsEnumerable().Select(x =>
                         {
                             DateTime dt;
                             if (DateTime.TryParse(x.RegisterDate, out dt) == false)
@@ -521,7 +519,7 @@ namespace ClinicDentServer.Controllers
                         }).OrderBy(x => x.date).Select(x => x.patient).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "Вік: спочатку молодші":
-                        patientsToReturn = db.Patients.AsNoTracking().Where(p => ((p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))).AsEnumerable().Select(x =>
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).AsEnumerable().Select(x =>
                         {
                             DateTime dt;
                             int birthYear;
@@ -540,7 +538,7 @@ namespace ClinicDentServer.Controllers
                         }).OrderByDescending(x => x.date).Select(x => x.patient).ToArray()[Range.StartAt(patientsPerPage * (page - 1))].Take(patientsPerPage).ToArray();
                         break;
                     case "Вік: спочатку старші":
-                        patientsToReturn = db.Patients.AsNoTracking().Where(p => ((p.Name.ToLower().Contains(searchText) || p.Name.Contains(searchText)) && (p.Stages.Any((s) => s.Price != s.Payed)) && (p.Stages.Where(s => s.Doctor.Id == doctorId).Any()))).AsEnumerable().Select(x =>
+                        patientsToReturn = db.Patients.AsNoTracking().Where(p => (p.Name.ToLower().Contains(searchText.ToLower()) && p.Stages.Any(s => s.Price != s.Payed && s.Doctor.Id == doctorId))).AsEnumerable().Select(x =>
                         {
                             DateTime dt;
                             int birthYear;
