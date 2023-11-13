@@ -22,7 +22,7 @@ namespace ClinicDentServer.SocketServer
         public void createConnection()
         {
             int portNumber = 12495;
-            ipAddr = IPAddress.Parse("192.168.0.102");
+            ipAddr = IPAddress.Parse("192.168.31.102");
             ipEndPoint = new IPEndPoint(ipAddr, portNumber);
             sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             try

@@ -3,7 +3,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://192.168.0.102:12496"
+      "applicationUrl": "http://192.168.31.102:12496"
 
     }
   },
@@ -19,7 +19,7 @@
     "ClinicDentServer": {
       "commandName": "Project",
       "dotnetRunMessages": "true",
-      "applicationUrl": "http://192.168.0.102:12496",
+      "applicationUrl": "http://192.168.31.102:12496",
       "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
