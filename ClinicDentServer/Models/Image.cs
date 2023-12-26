@@ -2,6 +2,14 @@
 
 namespace ClinicDentServer.Models
 {
+    public enum ImageType
+    {
+        Undefined = 0,
+        Regular = 1,
+        XRay = 2,
+        All = 3,
+
+    }
     public class Image
     {
         public Image()
@@ -15,6 +23,7 @@ namespace ClinicDentServer.Models
             CompressedBytes = i.CompressedBytes;
             FileName = i.FileName;
             DoctorId = i.DoctorId;
+            IsXRay = i.IsXRay;
             Stages = new List<Stage>();
 
         }
@@ -24,6 +33,7 @@ namespace ClinicDentServer.Models
         public string FileName { get; set; }
         public virtual Doctor Doctor { get; set; }
         public int? DoctorId { get; set; }
+        public bool? IsXRay { get; set; }
         public virtual ICollection<Stage> Stages { get; set; }
 
     }
@@ -36,12 +46,15 @@ namespace ClinicDentServer.Models
             OriginalBytes = i.OriginalBytes;
             CompressedBytes = i.CompressedBytes;
             FileName = i.FileName;
+            IsXRay = i.IsXRay;
             DoctorId = i.DoctorId.Value;
         }
         public int Id { get; set; }
         public byte[] OriginalBytes { get; set; }
         public byte[] CompressedBytes { get; set; }
         public string FileName { get; set; }
+        public bool? IsXRay { get; set; }
+
         public int DoctorId { get; set; }
 
     }

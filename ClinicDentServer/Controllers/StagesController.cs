@@ -22,7 +22,7 @@ namespace ClinicDentServer.Controllers
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 StageDTO[] resultDTO = await db.Stages.AsNoTracking()
-                                                    .Include(s => s.Doctor)
+                                                    .Include(s => s.Doctor).Include(s=>s.ToothUnderObservation)
                                                     .Where(s => s.PatientId == patientId)
                                                     .OrderByDescending(s => s.StageDatetime)
                                                     .ThenByDescending(s => s.Id)
@@ -62,7 +62,7 @@ namespace ClinicDentServer.Controllers
                 {
                     return NotFound();
                 }
-                Stage stage = db.Stages.Include(s => s.Doctor).FirstOrDefault(x => x.Id == stageId);
+                Stage stage = db.Stages.Include(s => s.Doctor).Include(s => s.ToothUnderObservation).FirstOrDefault(x => x.Id == stageId);
                 stage.Images.Add(image);
                 await db.SaveChangesAsync();
                 return Ok(new StageDTO(stage));
@@ -158,7 +158,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Stage stage = db.Stages.Include(s => s.Images).Include(s => s.Doctor).Include(s => s.Patient).FirstOrDefault(x => x.Id == stageId);
+                Stage stage = db.Stages.Include(s => s.Images).Include(s => s.Doctor).Include(s => s.Patient).Include(s => s.ToothUnderObservation).FirstOrDefault(x => x.Id == stageId);
                 if (stage == null)
                 {
                     return NotFound();

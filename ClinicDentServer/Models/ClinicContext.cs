@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
+using System.Reflection.Metadata;
 
 namespace ClinicDentServer.Models
 {
@@ -10,6 +11,8 @@ namespace ClinicDentServer.Models
         public DbSet<Stage> Stages { get; set; }
         public DbSet<Image> Images { get; set; }
         public DbSet<Doctor> Doctors { get; set; }
+        public DbSet<ToothUnderObservation> ToothUnderObservations { get; set; }
+
         public DbSet<Cabinet> Cabinets { get; set; }
         public DbSet<CabinetComment> CabinetComments { get; set; }
 
@@ -32,8 +35,6 @@ namespace ClinicDentServer.Models
                 Database.ExecuteSqlRaw(File.ReadAllText(Environment.CurrentDirectory + @"\sql queries\CreateTrigger_DoctorDeleted.sql"));
                 Database.ExecuteSqlRaw(File.ReadAllText(Environment.CurrentDirectory + @"\sql queries\CreateTrigger_PatientDeleted.sql"));
                 Database.ExecuteSqlRaw(File.ReadAllText(Environment.CurrentDirectory + @"\sql queries\CreateTrigger_StageAssetDeleted.sql"));
-
-
             }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,6 +53,13 @@ namespace ClinicDentServer.Models
                 .WithMany(s => s.Stages)
                 .HasForeignKey(s => s.DoctorId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            //ToothUnderObservation
+            modelBuilder.Entity<Stage>()
+        .HasOne(e => e.ToothUnderObservation)
+            .WithOne(e => e.Stage)
+        .HasForeignKey<ToothUnderObservation>(e => e.StageId)
+        .IsRequired();
             #endregion
 
             #region ScheduleForeignKeys

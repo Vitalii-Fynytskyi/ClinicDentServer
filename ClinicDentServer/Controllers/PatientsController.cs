@@ -47,7 +47,7 @@ namespace ClinicDentServer.Controllers
         }
         //PUT api/patients
         [HttpPut]
-        public async Task<ActionResult<PatientDTO>> Put(PatientDTO patient)
+        public async Task<ActionResult> Put(PatientDTO patient)
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {

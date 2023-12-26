@@ -95,6 +95,9 @@ namespace ClinicDentServer.Models
         public int Price { get; set; }
         public int Expenses { get; set; }
         public string CommentText { get; set; }
+
+        public virtual ToothUnderObservation ToothUnderObservation { get; set; }
+
         public virtual Patient Patient { get; set; }
         public virtual Doctor Doctor { get; set; }
         public virtual ICollection<Image> Images { get; set; }
@@ -131,6 +134,10 @@ namespace ClinicDentServer.Models
             CommentText = s.CommentText;
             Pin = s.PinId;
             DoctorName = s.Doctor.Name;
+            if(s.ToothUnderObservation != null)
+            {
+                ToothUnderObservationId = s.ToothUnderObservation.Id;
+            }
         }
         public int Id { get; set; }
         public int PatientId { get; set; }
@@ -170,5 +177,8 @@ namespace ClinicDentServer.Models
 
         public string CommentText { get; set; }
         public string DoctorName { get; set; }
+
+        public int? ToothUnderObservationId { get; set; }
+
     }
 }
