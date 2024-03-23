@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
-using System.Reflection.Metadata;
 
 namespace ClinicDentServer.Models
 {
@@ -105,7 +104,7 @@ namespace ClinicDentServer.Models
             patient.Id = 1;
             patient.Name = "Demo Patient";
             patient.Birthdate = "1999";
-            patient.RegisterDate = "16.09.2021";    
+            patient.RegisterDate = "16.09.2021";
             patient.Statuses = "Новий|";
             patient.Phone = "0963411125";
             patient.Notes = "NotesText";
@@ -122,20 +121,13 @@ namespace ClinicDentServer.Models
 
             Cabinet cabinet1 = new Cabinet();
             cabinet1.Id = 1;
-            cabinet1.CabinetName = "Cabinet 1";
+            cabinet1.CabinetName = "Крісло 1";
 
-            Cabinet cabinet2 = new Cabinet();
-            cabinet2.Id = 2;
-            cabinet2.CabinetName = "Cabinet 2";
-
-            Cabinet cabinet3 = new Cabinet();
-            cabinet3.Id = 3;
-            cabinet3.CabinetName = "Cabinet 3";
 
             modelBuilder.UseCollation("Cyrillic_General_CI_AS");
             modelBuilder.Entity<Patient>().HasData(patient);
             modelBuilder.Entity<Doctor>().HasData(doctor);
-            modelBuilder.Entity<Cabinet>().HasData(cabinet1, cabinet2, cabinet3);
+            modelBuilder.Entity<Cabinet>().HasData(cabinet1);
         }
         protected override void OnConfiguring(DbContextOptionsBuilder dbContextOptionsBuilder)
         {

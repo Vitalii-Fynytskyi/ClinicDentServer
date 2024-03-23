@@ -258,7 +258,7 @@ namespace ClinicDentServer.SocketServer
                 {
                     foreach (User user in Server.Users)
                     {
-                        if (user != this)
+                        if (user != this && user.ConnectionString == this.ConnectionString)
                             user.send("scheduleCabinetCommentUpdated", date, cabinetIdStr, newComment);
                     }
                 }
@@ -275,7 +275,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    if (user != this)
+                    if (user != this && user.ConnectionString == this.ConnectionString)
                         user.send("scheduleRecordCommentUpdated", recordIdStr, newComment, schedule.StartDatetime.ToString(DateStringPattern), schedule.CabinetId.ToString());
                 }
             }
@@ -292,7 +292,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    if (user != this)
+                    if (user != this && user.ConnectionString == this.ConnectionString)
                         user.send("scheduleRecordStateUpdated", recordIdStr, newState, schedule.StartDatetime.ToString(DateStringPattern), schedule.CabinetId.ToString());
                 }
             }
@@ -314,7 +314,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    if (user != this)
+                    if (user != this && user.ConnectionString == this.ConnectionString)
                         user.send("scheduleRecordUpdated", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString());
                 }
             }
@@ -336,7 +336,7 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    if (user != this)
+                    if (user != this && user.ConnectionString == this.ConnectionString)
                         user.send("scheduleRecordDeleted", recordIdStr, schedule.StartDatetime.ToString(DateStringPattern), schedule.CabinetId.ToString());
                 }
             }
@@ -393,7 +393,8 @@ namespace ClinicDentServer.SocketServer
             {
                 foreach (User user in Server.Users)
                 {
-                    user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), String.Join('|', scheduleDTO.StagesPriceSum), String.Join('|', scheduleDTO.StagesPaidSum), sendViaMessagerStateNumberStr, String.Join('|', scheduleDTO.DoctorIds), String.Join('|', scheduleDTO.StagesExpensesSum));
+                    if(user.ConnectionString == this.ConnectionString)
+                        user.send("scheduleRecordAdded", scheduleDTO.Id.ToString(), scheduleDTO.StartDatetime, scheduleDTO.EndDatetime, scheduleDTO.Comment, patientIdToSend, scheduleDTO.DoctorId.ToString(), scheduleDTO.PatientName, scheduleDTO.CabinetId.ToString(), scheduleDTO.CabinetName, ((int)scheduleDTO.State).ToString(), String.Join('|', scheduleDTO.StagesPriceSum), String.Join('|', scheduleDTO.StagesPaidSum), sendViaMessagerStateNumberStr, String.Join('|', scheduleDTO.DoctorIds), String.Join('|', scheduleDTO.StagesExpensesSum));
                 }
             }
             db.Dispose();
