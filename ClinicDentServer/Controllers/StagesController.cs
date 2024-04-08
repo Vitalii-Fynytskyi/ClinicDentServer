@@ -1,13 +1,18 @@
-﻿using ClinicDentServer.Models;
+﻿using ClinicDentServer.Exceptions;
+using ClinicDentServer.Models;
+using ClinicDentServer.RequestCustomAnswers;
 using ClinicDentServer.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NumSharp.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Tensorflow;
 
 namespace ClinicDentServer.Controllers
 {
@@ -21,11 +26,36 @@ namespace ClinicDentServer.Controllers
         {
             using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                StageDTO[] resultDTO = await db.Stages.AsNoTracking()
+                bool patientExists = await db.Patients.AnyAsync(p => p.Id == patientId);
+                if (!patientExists)
+                {
+                    throw new NotFoundException($"Patient with ID= {patientId} not found.");
+                }
+                StageDTO[] resultDTO = db.Stages.AsNoTracking()
                                                     .Include(s => s.Doctor).Include(s=>s.ToothUnderObservation)
                                                     .Where(s => s.PatientId == patientId)
                                                     .OrderByDescending(s => s.StageDatetime)
                                                     .ThenByDescending(s => s.Id)
+                                                    .Select(s => new StageDTO(s))
+                                                    .ToArray();
+                return Ok(resultDTO);
+            }
+        }
+        /// <summary>
+        /// Enpoint returns array of stages based on requested stage ids in body
+        /// </summary>
+        /// <param name="stagesIdStr">example: "1,2,3,4". It is stage ids separated by comma that will be returned</param>
+        /// <returns></returns>
+        [HttpPost("getMany")]
+        [Consumes("text/plain")]
+        public async Task<ActionResult<IEnumerable<StageDTO>>> GetMany([FromBody] string stagesIdStr)
+        {
+            using (ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            {
+                int[] stagesId = stagesIdStr.Split(',').Select(s => Int32.Parse(s)).ToArray();
+                StageDTO[] resultDTO = await db.Stages.AsNoTracking()
+                                                    .Include(s => s.Doctor).Include(s => s.ToothUnderObservation)
+                                                    .Where(s => stagesId.Contains(s.Id))
                                                     .Select(s => new StageDTO(s))
                                                     .ToArrayAsync();
                 return Ok(resultDTO);
@@ -75,10 +105,15 @@ namespace ClinicDentServer.Controllers
             {
                 Doctor doctor = await db.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == User.Identity.Name);
                 Stage stageToDb = new Stage(stageDTO);
+                DateTime now = DateTime.Now;
+                stageToDb.CreatedDateTime = now;
+                stageToDb.LastModifiedDateTime = now;
                 db.Stages.Add(stageToDb);
                 db.SaveChanges();
                 stageDTO.Id = stageToDb.Id;
                 stageDTO.DoctorName = doctor.Name;
+                stageDTO.CreatedDateTime= stageToDb.CreatedDateTime.ToString(Options.ExactDateTimePattern);
+                stageDTO.LastModifiedDateTime = stageToDb.LastModifiedDateTime.ToString(Options.ExactDateTimePattern);
                 return Ok(stageDTO);
             }
         }
@@ -87,29 +122,80 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
+                Stage existingStage = await db.Stages.AsNoTracking().FirstOrDefaultAsync(s=>s.Id==stageDTO.Id);
                 Stage stageToDb = new Stage(stageDTO);
+                if (existingStage.LastModifiedDateTime > stageToDb.LastModifiedDateTime)
+                {
+                    throw new ConflictException("Another process have updated the stage");
+                }
                 db.Stages.Update(stageToDb);
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 return NoContent();
             }
         }
         [HttpPut("putMany")]
-        public async Task<ActionResult> PutMany(PutStagesRequest putStagesRequest)
+        public async Task<ActionResult<PutStagesRequestAnswer>> PutMany(PutStagesRequest putStagesRequest)
         {
             //convert dtos to database entities
-            List<Stage> dbStages = putStagesRequest.stageDTO.Select(dto => new Stage(dto)).ToList();
+            List<Stage> stagesFromDTO = putStagesRequest.stageDTO.Select(dto => new Stage(dto)).ToList();
+            List<int> stageIds = new List<int>(stagesFromDTO.Count);
+            DateTime now = DateTime.Now;
+            for(int i =0;i< stagesFromDTO.Count; i++)
+            {
+                stageIds.Add(stagesFromDTO[i].Id);
+            }
             ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
             try
             {
-                db.Stages.UpdateRange(dbStages);
-                await db.SaveChangesAsync();
-                return NoContent();
+                Dictionary<int, DateTime> stageIdDateMap = await db.Stages
+                .AsNoTracking()
+                .Where(s => stageIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.LastModifiedDateTime);
+                List<int> conflictedStageIds = new List<int>();
+                for (int i = 0; i < stagesFromDTO.Count; i++)
+                {
+                    var stage = stagesFromDTO[i];
+                    if (stageIdDateMap.TryGetValue(stage.Id, out var lastModifiedDateTime))
+                    {
+                        if (stage.LastModifiedDateTime < lastModifiedDateTime)
+                        {
+                            conflictedStageIds.Add(stage.Id);
+                            stagesFromDTO.RemoveAt(i);
+                            i--;
+                        }
+                    }
+                }
+
+                if (stagesFromDTO.Any())
+                {
+                    for (int i = 0; i < stagesFromDTO.Count; i++)
+                    {
+                        stagesFromDTO[i].LastModifiedDateTime = now;
+                    }
+                    db.Stages.UpdateRange(stagesFromDTO);
+                    db.SaveChanges();
+                }
+                if(conflictedStageIds.Count > 0)
+                {
+                    return Conflict(new PutStagesRequestAnswer()
+                    {
+                        ConflictedStagesIds = conflictedStageIds,
+                        NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
+                    });
+                }
+                else
+                {
+                    return Ok(new PutStagesRequestAnswer()
+                    {
+                        NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
+                    });
+                }
             }
             finally
             {
                 db.Dispose();
                 StringBuilder stringBuilder = new StringBuilder(32);
-                for(int i =0; i < dbStages.Count; i++)
+                for(int i =0; i < stagesFromDTO.Count; i++)
                 {
                     if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed || putStagesRequest.stageDTO[i].Expenses!= putStagesRequest.stageDTO[i].OldExpenses)
                     {

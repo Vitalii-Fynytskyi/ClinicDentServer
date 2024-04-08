@@ -18,6 +18,10 @@ namespace ClinicDentServer.Filters
             {
                 context.Result = new BadRequestObjectResult(new { errorMessage = context.Exception.Message });
             }
+            else if (context.Exception is ConflictException)
+            {
+                context.Result = new ConflictObjectResult(new { errorMessage = context.Exception.Message });
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace ClinicDentServer.Models
 {
@@ -16,8 +18,9 @@ namespace ClinicDentServer.Models
         public string RegisterDate { get; set; }
         public string Statuses { get; set; }
         public string CurePlan { get; set; }
-
         public byte[] ImageBytes { get; set; }
+        public DateTime CreatedDateTime { get; set; }
+        public DateTime LastModifiedDateTime { get; set; }
         public virtual ICollection<Stage> Stages { get; private set; }
         public virtual ICollection<Schedule> Schedules { get; private set; }
 
@@ -39,6 +42,16 @@ namespace ClinicDentServer.Models
             Statuses = p.Statuses;
             ImageBytes = p.ImageBytes;
             CurePlan= p.CurePlan;
+            bool isValid = DateTime.TryParseExact(p.CreatedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
+            if (isValid)
+            {
+                CreatedDateTime = result;
+            }
+            isValid = DateTime.TryParseExact(p.LastModifiedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+            if (isValid)
+            {
+                LastModifiedDateTime = result;
+            }
             Stages = new List<Stage>();
             Schedules = new List<Schedule>();
         }
@@ -61,6 +74,9 @@ namespace ClinicDentServer.Models
             RegisterDate = p.RegisterDate;
             Statuses = p.Statuses;
             ImageBytes = p.ImageBytes;
+            CreatedDateTime = p.CreatedDateTime.ToString(Options.ExactDateTimePattern);
+            LastModifiedDateTime = p.LastModifiedDateTime.ToString(Options.ExactDateTimePattern);
+
         }
         public int Id { get; set; }
         public string Name { get; set; }
@@ -75,6 +91,8 @@ namespace ClinicDentServer.Models
 
         public string Statuses { get; set; }
         public byte[] ImageBytes { get; set; }
+        public string CreatedDateTime { get; set; }
+        public string LastModifiedDateTime { get; set; }
     }
     public class PatientsToClient
     {

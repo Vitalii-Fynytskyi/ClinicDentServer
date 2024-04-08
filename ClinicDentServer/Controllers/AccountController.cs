@@ -46,6 +46,12 @@ namespace ClinicDentServer.Controllers
 
             return connectionStrings.Keys;
         }
+        [HttpGet("apiVersion")]
+        [Produces("text/plain")]
+        public ActionResult<string> GetApiVersion()
+        {
+            return Ok("1");
+        }
         //[HttpGet("createImages")]
         //public async Task<ActionResult> CreateImages()
         //{

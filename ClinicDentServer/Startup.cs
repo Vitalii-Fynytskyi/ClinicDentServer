@@ -79,6 +79,7 @@ namespace ClinicDentServer
             {
                 endpoints.MapControllers();
             });
+            app.UseStaticFiles();
         }
     }
 }

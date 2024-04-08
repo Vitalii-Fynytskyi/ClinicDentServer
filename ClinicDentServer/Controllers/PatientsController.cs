@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -38,23 +39,39 @@ namespace ClinicDentServer.Controllers
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 Patient patientFromDTO = new Patient(patient);
+                DateTime now = DateTime.Now;
+                patientFromDTO.CreatedDateTime = now;
+                patientFromDTO.LastModifiedDateTime = now;
                 db.Patients.Add(patientFromDTO);
 
                 await db.SaveChangesAsync();
                 patient.Id = patientFromDTO.Id;
+                patient.CreatedDateTime = patientFromDTO.CreatedDateTime.ToString(Options.ExactDateTimePattern);
+                patient.LastModifiedDateTime = patientFromDTO.LastModifiedDateTime.ToString(Options.ExactDateTimePattern);
                 return Ok(patient);
             }
         }
         //PUT api/patients
         [HttpPut]
+        [Produces("text/plain")]
         public async Task<ActionResult> Put(PatientDTO patient)
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 Patient patientFromDTO = new Patient(patient);
+                Patient existingPatient = await db.Patients.AsNoTracking().FirstOrDefaultAsync(p => p.Id == patient.Id);
+                if (existingPatient == null)
+                {
+                    throw new NotFoundException($"Patient with id={patient.Id} cannot be found");
+                }
+                if (existingPatient.LastModifiedDateTime > patientFromDTO.LastModifiedDateTime)
+                {
+                    throw new ConflictException("Another process have updated the patient");
+                }
+                patientFromDTO.LastModifiedDateTime = DateTime.Now;
                 db.Patients.Update(patientFromDTO);
-                await db.SaveChangesAsync();
-                return NoContent();
+                db.SaveChanges();
+                return Ok(patientFromDTO.LastModifiedDateTime.ToString(Options.ExactDateTimePattern));
             }
 
             
@@ -77,12 +94,29 @@ namespace ClinicDentServer.Controllers
             
         }
         [HttpPut("changeCurePlan")]
+        [Produces("text/plain")]
         public async Task<ActionResult> ChangeCurePlan(ChangeCurePlanRequest r)
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                db.Database.ExecuteSqlRaw($"UPDATE [Patients] SET [CurePlan]='{r.CurePlan}' WHERE [Id]={r.PatientId}");
-                return Ok();
+                Patient patient = await db.Patients.FirstOrDefaultAsync(p => p.Id == r.PatientId);
+                if (patient == null)
+                {
+                    throw new NotFoundException($"Patient with id={r.PatientId} cannot be found");
+                }
+                bool isValid = DateTime.TryParseExact(r.LastModifiedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime lastModifiedDateTime);
+                if (isValid)
+                {
+                    if (patient.LastModifiedDateTime > lastModifiedDateTime)
+                    {
+                        throw new ConflictException("Another process have updated the patient");
+                    }
+                    patient.CurePlan = r.CurePlan;
+                    patient.LastModifiedDateTime = DateTime.Now;
+                    db.SaveChanges();
+                    return Ok(patient.LastModifiedDateTime.ToString(Options.ExactDateTimePattern));
+                }
+                throw new NotValidException($"PatientsController.ChangeCurePlan.ChangeCurePlanRequest.LastModifiedDateTime ={r.LastModifiedDateTime} and is not valid string and cannot be converted to DateTime");
             }
         }
 

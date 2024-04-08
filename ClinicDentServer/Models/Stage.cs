@@ -42,6 +42,31 @@ namespace ClinicDentServer.Models
             Price = s.Price;
             Expenses = s.Expenses;
             CommentText = s.CommentText;
+            if(s.CreatedDateTime != null)
+            {
+                isValid = DateTime.TryParseExact(s.CreatedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+                if (isValid)
+                {
+                    CreatedDateTime = result;
+                }
+                else
+                {
+                    throw new NotValidException($"'{s.CreatedDateTime}' datetime is not in correct format");
+                }
+            }
+            if(s.LastModifiedDateTime != null)
+            {
+                isValid = DateTime.TryParseExact(s.LastModifiedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+                if (isValid)
+                {
+                    LastModifiedDateTime = result;
+                }
+                else
+                {
+                    throw new NotValidException($"'{s.LastModifiedDateTime}' datetime is not in correct format");
+                }
+            }
+            
             Images = new List<Image>();
 
         }
@@ -95,6 +120,8 @@ namespace ClinicDentServer.Models
         public int Price { get; set; }
         public int Expenses { get; set; }
         public string CommentText { get; set; }
+        public DateTime CreatedDateTime { get; set; }
+        public DateTime LastModifiedDateTime { get; set; }
 
         public virtual ToothUnderObservation ToothUnderObservation { get; set; }
 
@@ -134,7 +161,9 @@ namespace ClinicDentServer.Models
             CommentText = s.CommentText;
             Pin = s.PinId;
             DoctorName = s.Doctor.Name;
-            if(s.ToothUnderObservation != null)
+            CreatedDateTime = s.CreatedDateTime.ToString(Options.ExactDateTimePattern);
+            LastModifiedDateTime = s.LastModifiedDateTime.ToString(Options.ExactDateTimePattern);
+            if (s.ToothUnderObservation != null)
             {
                 ToothUnderObservationId = s.ToothUnderObservation.Id;
             }
@@ -179,6 +208,7 @@ namespace ClinicDentServer.Models
         public string DoctorName { get; set; }
 
         public int? ToothUnderObservationId { get; set; }
-
+        public string CreatedDateTime { get; set; }
+        public string LastModifiedDateTime { get; set; }
     }
 }
