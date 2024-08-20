@@ -42,7 +42,7 @@ namespace ClinicDentServer.Controllers
             }
         }
         /// <summary>
-        /// Enpoint returns array of stages based on requested stage ids in body
+        /// Endpoint returns array of stages based on requested stage ids in body
         /// </summary>
         /// <param name="stagesIdStr">example: "1,2,3,4". It is stage ids separated by comma that will be returned</param>
         /// <returns></returns>

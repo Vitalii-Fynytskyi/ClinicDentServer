@@ -131,7 +131,6 @@ namespace ClinicDentServer.Controllers
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
                 Image imageFromDTO = new Image(image);
-
                 XRayMLModel.ModelInput sampleData = new XRayMLModel.ModelInput()
                 {
                     ImageSource = imageFromDTO.OriginalBytes,
@@ -151,9 +150,7 @@ namespace ClinicDentServer.Controllers
                 }
                 catch { }
                 db.Images.Add(imageFromDTO);
-
                 await db.SaveChangesAsync();
-
                 image.Id = imageFromDTO.Id;
                 image.IsXRay = imageFromDTO.IsXRay;
                 return Ok(image);

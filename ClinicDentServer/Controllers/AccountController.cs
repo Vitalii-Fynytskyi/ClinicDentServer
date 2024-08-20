@@ -50,7 +50,7 @@ namespace ClinicDentServer.Controllers
         [Produces("text/plain")]
         public ActionResult<string> GetApiVersion()
         {
-            return Ok("1");
+            return Ok("5");
         }
         //[HttpGet("createImages")]
         //public async Task<ActionResult> CreateImages()
