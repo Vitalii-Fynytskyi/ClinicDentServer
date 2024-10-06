@@ -11,14 +11,11 @@ namespace ClinicDentServer.Models
         public DbSet<Image> Images { get; set; }
         public DbSet<Doctor> Doctors { get; set; }
         public DbSet<ToothUnderObservation> ToothUnderObservations { get; set; }
-
         public DbSet<Cabinet> Cabinets { get; set; }
         public DbSet<CabinetComment> CabinetComments { get; set; }
-
-
         public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<Tooth> Teeth { get; set; }
         public DbSet<StageAsset> StageAssets { get; set; }
-
         string connectionString;
 
         public ClinicContext(DbContextOptions<ClinicContext> options) : base(options)

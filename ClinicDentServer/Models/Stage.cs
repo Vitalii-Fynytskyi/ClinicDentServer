@@ -10,6 +10,8 @@ namespace ClinicDentServer.Models
         public Stage()
         {
             Images = new List<Image>();
+            Teeth = new List<Tooth>();
+
         }
         public Stage(StageDTO s)
         {
@@ -68,7 +70,41 @@ namespace ClinicDentServer.Models
             }
             
             Images = new List<Image>();
+            Teeth = new List<Tooth>();
+        }
+        public void UpdateFromDTO(StageDTO dto)
+        {
+            PatientId = dto.PatientId;
+            DoctorId = dto.DoctorId;
+            Title = dto.Title;
+            IsSentViaViber = dto.IsSentViaViber;
 
+            if (DateTime.TryParseExact(dto.StageDatetime, Options.DateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime stageDateTime))
+            {
+                StageDatetime = stageDateTime;
+            }
+            else
+            {
+                throw new NotValidException($"'{dto.StageDatetime}' datetime is not in correct format");
+            }
+
+            OperationId = dto.Operation;
+            BondId = dto.Bond;
+            DentinId = dto.Dentin;
+            EnamelId = dto.Enamel;
+            CanalMethodId = dto.CanalMethod;
+            SealerId = dto.Sealer;
+            CementId = dto.Cement;
+            TechnicianId = dto.Technician;
+            PinId = dto.Pin;
+            CalciumId = dto.Calcium;
+
+            Payed = dto.Payed;
+            Price = dto.Price;
+            Expenses = dto.Expenses;
+            CommentText = dto.CommentText;
+
+            // Update LastModifiedDateTime if necessary
         }
         public int Id { get; set; }
         public int PatientId { get; set; }
@@ -128,6 +164,8 @@ namespace ClinicDentServer.Models
         public virtual Patient Patient { get; set; }
         public virtual Doctor Doctor { get; set; }
         public virtual ICollection<Image> Images { get; set; }
+        public virtual ICollection<Tooth> Teeth { get; set; }
+
 
     }
     public class StageDTO
@@ -166,6 +204,11 @@ namespace ClinicDentServer.Models
             if (s.ToothUnderObservation != null)
             {
                 ToothUnderObservationId = s.ToothUnderObservation.Id;
+            }
+            TeethNumbers = new List<byte>();
+            foreach(var tooth in s.Teeth)
+            {
+                TeethNumbers.Add(tooth.Id);
             }
         }
         public int Id { get; set; }
@@ -210,5 +253,6 @@ namespace ClinicDentServer.Models
         public int? ToothUnderObservationId { get; set; }
         public string CreatedDateTime { get; set; }
         public string LastModifiedDateTime { get; set; }
+        public List<byte> TeethNumbers { get; set; }
     }
 }

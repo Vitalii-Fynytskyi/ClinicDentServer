@@ -6,13 +6,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using NumSharp.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Tensorflow;
+using Tensorflow.Contexts;
 
 namespace ClinicDentServer.Controllers
 {
@@ -32,7 +32,7 @@ namespace ClinicDentServer.Controllers
                     throw new NotFoundException($"Patient with ID= {patientId} not found.");
                 }
                 StageDTO[] resultDTO = db.Stages.AsNoTracking()
-                                                    .Include(s => s.Doctor).Include(s=>s.ToothUnderObservation)
+                                                    .Include(s => s.Doctor).Include(s=>s.ToothUnderObservation).Include(s=>s.Teeth)
                                                     .Where(s => s.PatientId == patientId)
                                                     .OrderByDescending(s => s.StageDatetime)
                                                     .ThenByDescending(s => s.Id)
@@ -54,7 +54,7 @@ namespace ClinicDentServer.Controllers
             {
                 int[] stagesId = stagesIdStr.Split(',').Select(s => Int32.Parse(s)).ToArray();
                 StageDTO[] resultDTO = await db.Stages.AsNoTracking()
-                                                    .Include(s => s.Doctor).Include(s => s.ToothUnderObservation)
+                                                    .Include(s => s.Doctor).Include(s => s.ToothUnderObservation).Include(s=>s.Teeth)
                                                     .Where(s => stagesId.Contains(s.Id))
                                                     .Select(s => new StageDTO(s))
                                                     .ToArrayAsync();
@@ -92,7 +92,7 @@ namespace ClinicDentServer.Controllers
                 {
                     return NotFound();
                 }
-                Stage stage = db.Stages.Include(s => s.Doctor).Include(s => s.ToothUnderObservation).FirstOrDefault(x => x.Id == stageId);
+                Stage stage = db.Stages.Include(s => s.Doctor).Include(s => s.ToothUnderObservation).Include(s => s.Teeth).FirstOrDefault(x => x.Id == stageId);
                 stage.Images.Add(image);
                 await db.SaveChangesAsync();
                 return Ok(new StageDTO(stage));
@@ -122,13 +122,31 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Stage existingStage = await db.Stages.AsNoTracking().FirstOrDefaultAsync(s=>s.Id==stageDTO.Id);
-                Stage stageToDb = new Stage(stageDTO);
-                if (existingStage.LastModifiedDateTime > stageToDb.LastModifiedDateTime)
+                DateTime? lastModifiedDateTime = null;
+                Stage existingStage = await db.Stages.Include(s=>s.Teeth).FirstOrDefaultAsync(s=>s.Id==stageDTO.Id);
+                if (stageDTO.LastModifiedDateTime != null)
+                {
+                    bool isValid = DateTime.TryParseExact(stageDTO.LastModifiedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result);
+                    if (isValid)
+                    {
+                        lastModifiedDateTime = result;
+                    }
+                    else
+                    {
+                        throw new NotValidException($"'{stageDTO.LastModifiedDateTime}' datetime is not in correct format");
+                    }
+                }
+                if (existingStage.LastModifiedDateTime > lastModifiedDateTime)
                 {
                     throw new ConflictException("Another process have updated the stage");
                 }
-                db.Stages.Update(stageToDb);
+                var toothIds = stageDTO.TeethNumbers;
+                var teeth = db.Teeth.Where(t => toothIds.Contains(t.Id)).ToList();
+
+                // Associate the existing Teeth with the Stage
+                existingStage.Teeth = teeth;
+                
+                db.Stages.Update(existingStage);
                 db.SaveChanges();
                 return NoContent();
             }
@@ -136,78 +154,92 @@ namespace ClinicDentServer.Controllers
         [HttpPut("putMany")]
         public async Task<ActionResult<PutStagesRequestAnswer>> PutMany(PutStagesRequest putStagesRequest)
         {
-            //convert dtos to database entities
-            List<Stage> stagesFromDTO = putStagesRequest.stageDTO.Select(dto => new Stage(dto)).ToList();
-            List<int> stageIds = new List<int>(stagesFromDTO.Count);
             DateTime now = DateTime.Now;
-            for(int i =0;i< stagesFromDTO.Count; i++)
+            List<int> stageIds = putStagesRequest.stageDTO.Select(dto => dto.Id).ToList();
+            List<Stage> existingStages = new List<Stage>();
+            using (var db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                stageIds.Add(stagesFromDTO[i].Id);
-            }
-            ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value);
-            try
-            {
-                Dictionary<int, DateTime> stageIdDateMap = await db.Stages
-                .AsNoTracking()
-                .Where(s => stageIds.Contains(s.Id))
-                .ToDictionaryAsync(s => s.Id, s => s.LastModifiedDateTime);
-                List<int> conflictedStageIds = new List<int>();
-                for (int i = 0; i < stagesFromDTO.Count; i++)
+                try
                 {
-                    var stage = stagesFromDTO[i];
-                    if (stageIdDateMap.TryGetValue(stage.Id, out var lastModifiedDateTime))
+                    // Load existing stages including Teeth associations
+                    existingStages = await db.Stages
+                        .Include(s => s.Teeth)
+                        .Include(s => s.Doctor)
+                        .Where(s => stageIds.Contains(s.Id))
+                        .ToListAsync();
+
+                    List<int> conflictedStageIds = new List<int>();
+
+                    foreach (var dto in putStagesRequest.stageDTO)
                     {
-                        if (stage.LastModifiedDateTime < lastModifiedDateTime)
+                        var stage = existingStages.FirstOrDefault(s => s.Id == dto.Id);
+                        if (stage != null)
                         {
-                            conflictedStageIds.Add(stage.Id);
-                            stagesFromDTO.RemoveAt(i);
-                            i--;
+                            // Check for concurrency conflict
+                            if (stage.LastModifiedDateTime > DateTime.ParseExact(dto.LastModifiedDateTime, Options.ExactDateTimePattern, CultureInfo.InvariantCulture))
+                            {
+                                conflictedStageIds.Add(stage.Id);
+                                continue; // Skip this stage
+                            }
+
+                            // Update stage properties
+                            stage.UpdateFromDTO(dto);
+
+                            // Update Teeth associations
+                            var toothIds = dto.TeethNumbers ?? new List<byte>();
+                            var teeth = await db.Teeth.Where(t => toothIds.Contains(t.Id)).ToListAsync();
+
+                            // Clear existing associations
+                            stage.Teeth.Clear();
+
+                            // Add new associations
+                            foreach (var tooth in teeth)
+                            {
+                                stage.Teeth.Add(tooth);
+                            }
+
+                            // Update LastModifiedDateTime
+                            stage.LastModifiedDateTime = now;
                         }
                     }
-                }
 
-                if (stagesFromDTO.Any())
-                {
-                    for (int i = 0; i < stagesFromDTO.Count; i++)
+                    // Save changes
+                    await db.SaveChangesAsync();
+
+                    if (conflictedStageIds.Count > 0)
                     {
-                        stagesFromDTO[i].LastModifiedDateTime = now;
+                        return Conflict(new PutStagesRequestAnswer()
+                        {
+                            ConflictedStagesIds = conflictedStageIds,
+                            NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
+                        });
                     }
-                    db.Stages.UpdateRange(stagesFromDTO);
-                    db.SaveChanges();
-                }
-                if(conflictedStageIds.Count > 0)
-                {
-                    return Conflict(new PutStagesRequestAnswer()
+                    else
                     {
-                        ConflictedStagesIds = conflictedStageIds,
-                        NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
-                    });
+                        return Ok(new PutStagesRequestAnswer()
+                        {
+                            NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
+                        });
+                    }
                 }
-                else
-                {
-                    return Ok(new PutStagesRequestAnswer()
-                    {
-                        NewLastModifiedDateTime = now.ToString(Options.ExactDateTimePattern)
-                    });
-                }
-            }
-            finally
+                finally
             {
-                db.Dispose();
-                StringBuilder stringBuilder = new StringBuilder(32);
-                for(int i =0; i < stagesFromDTO.Count; i++)
-                {
-                    if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed || putStagesRequest.stageDTO[i].Expenses!= putStagesRequest.stageDTO[i].OldExpenses)
+                    db.Dispose();
+                    StringBuilder stringBuilder = new StringBuilder(32);
+                    for (int i = 0; i < existingStages.Count; i++)
                     {
-                        int expensesDifference = putStagesRequest.stageDTO[i].Expenses - putStagesRequest.stageDTO[i].OldExpenses;
-                        int priceDifference = putStagesRequest.stageDTO[i].Price - putStagesRequest.stageDTO[i].OldPrice;
-                        int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed;
+                        if (putStagesRequest.stageDTO[i].OldPrice != putStagesRequest.stageDTO[i].Price || putStagesRequest.stageDTO[i].Payed != putStagesRequest.stageDTO[i].OldPayed || putStagesRequest.stageDTO[i].Expenses != putStagesRequest.stageDTO[i].OldExpenses)
+                        {
+                            int expensesDifference = putStagesRequest.stageDTO[i].Expenses - putStagesRequest.stageDTO[i].OldExpenses;
+                            int priceDifference = putStagesRequest.stageDTO[i].Price - putStagesRequest.stageDTO[i].OldPrice;
+                            int payedDifference = putStagesRequest.stageDTO[i].Payed - putStagesRequest.stageDTO[i].OldPayed;
 
-                        stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId},{expensesDifference}");
+                            stringBuilder.Append($"{putStagesRequest.stageDTO[i].PatientId},{putStagesRequest.stageDTO[i].StageDatetime},{priceDifference},{payedDifference},{putStagesRequest.stageDTO[i].DoctorId},{expensesDifference}");
+                        }
                     }
-                }
-                Program.TcpServer.SendToAll("stagePayInfoUpdated", stringBuilder.ToString());
+                    Program.TcpServer.SendToAll("stagePayInfoUpdated", stringBuilder.ToString());
 
+                }
             }
         }
         [HttpDelete("{stageId}")]
@@ -244,7 +276,7 @@ namespace ClinicDentServer.Controllers
         {
             using(ClinicContext db = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
             {
-                Stage stage = db.Stages.Include(s => s.Images).Include(s => s.Doctor).Include(s => s.Patient).Include(s => s.ToothUnderObservation).FirstOrDefault(x => x.Id == stageId);
+                Stage stage = db.Stages.Include(s => s.Images).Include(s => s.Doctor).Include(s => s.Patient).Include(s => s.ToothUnderObservation).Include(s => s.Teeth).FirstOrDefault(x => x.Id == stageId);
                 if (stage == null)
                 {
                     return NotFound();
