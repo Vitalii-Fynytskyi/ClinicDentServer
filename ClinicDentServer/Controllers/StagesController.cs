@@ -140,6 +140,7 @@ namespace ClinicDentServer.Controllers
                 {
                     throw new ConflictException("Another process have updated the stage");
                 }
+                existingStage.UpdateFromDTO(stageDTO);
                 var toothIds = stageDTO.TeethNumbers;
                 var teeth = db.Teeth.Where(t => toothIds.Contains(t.Id)).ToList();
 

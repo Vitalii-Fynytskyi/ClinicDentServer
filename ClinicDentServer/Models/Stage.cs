@@ -115,7 +115,7 @@ namespace ClinicDentServer.Models
         public DateTime StageDatetime { get; set; }
         public bool IsSentViaViber { get; set; }
         public int? OperationId { get; set; }
-        public StageAsset Operation { get; set; } //'Реставрація' 'Плом. каналів' 'Цементування коронок'
+        public StageAsset Operation { get; set; }
 
         //***********************FOR RESTORATION********************
         public int? BondId { get; set; }

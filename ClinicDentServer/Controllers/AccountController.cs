@@ -47,7 +47,7 @@ namespace ClinicDentServer.Controllers
         [Produces("text/plain")]
         public ActionResult<string> GetApiVersion()
         {
-            return Ok("7");
+            return Ok(Startup.Configuration.GetValue<string>("RequiredClientVersion"));
         }
         
         private ActionResult<DoctorDTO> GetDoctorDTO(DoctorUser doctorUser)
