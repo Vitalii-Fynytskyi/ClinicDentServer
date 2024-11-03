@@ -10,7 +10,7 @@ namespace ClinicDentServer.Models
         All = 3,
 
     }
-    public class Image
+    public class Image :BaseModel
     {
         public Image()
         {
@@ -27,7 +27,6 @@ namespace ClinicDentServer.Models
             Stages = new List<Stage>();
 
         }
-        public int Id { get; set; }
         public byte[] OriginalBytes { get; set; }
         public byte[] CompressedBytes { get; set; }
         public string FileName { get; set; }

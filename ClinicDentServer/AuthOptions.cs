@@ -7,7 +7,8 @@ namespace ClinicDentServer
     {
         public const string ISSUER = "ClinicDentServer";
         public const string AUDIENCE = "ClinicDentClient";
-        public const string KEY = "mysupersecret_secretkey!123";
+        public const string KEY = "mysupersecret_secretkey!12345678";
+
         public const int LIFETIME = 1440;
         public static SymmetricSecurityKey GetSymmetricSecurityKey()
         {

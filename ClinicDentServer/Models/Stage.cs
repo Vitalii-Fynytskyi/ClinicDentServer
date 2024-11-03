@@ -5,7 +5,7 @@ using System.Globalization;
 
 namespace ClinicDentServer.Models
 {
-    public class Stage
+    public class Stage :BaseModel
     {
         public Stage()
         {
@@ -208,7 +208,7 @@ namespace ClinicDentServer.Models
             TeethNumbers = new List<byte>();
             foreach(var tooth in s.Teeth)
             {
-                TeethNumbers.Add(tooth.Id);
+                TeethNumbers.Add((byte)tooth.Id);
             }
         }
         public int Id { get; set; }

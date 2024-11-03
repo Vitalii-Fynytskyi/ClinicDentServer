@@ -1,6 +1,6 @@
-﻿using ClinicDentServer.Models;
+﻿using ClinicDentServer.Interfaces.Repositories;
+using ClinicDentServer.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -14,19 +14,21 @@ namespace ClinicDentServer.Controllers
     [Authorize]
     public class DoctorsController : ControllerBase
     {
+        public IDefaultRepository<Doctor> doctorsRepository;
+        public DoctorsController(IDefaultRepository<Doctor> doctorsRepositoryToSet)
+        {
+            doctorsRepository= doctorsRepositoryToSet;
+        }
         //returns collection of doctors
         [HttpGet("getAll")]
         public async Task<ActionResult<IEnumerable<DoctorDTO>>> GetAll()
         {
-            using(ClinicContext clinicContext = new ClinicContext(HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ConnectionString").Value))
+            DoctorDTO[] doctors = await doctorsRepository.dbSet.AsNoTracking().Select(i => new DoctorDTO()
             {
-                DoctorDTO[] doctors = await clinicContext.Doctors.AsNoTracking().Select(i => new DoctorDTO()
-                {
-                    Id = i.Id,
-                    Name = i.Name,
-                }).ToArrayAsync();
-                return Ok(doctors);
-            }
+                Id = i.Id,
+                Name = i.Name,
+            }).ToArrayAsync();
+            return Ok(doctors);
         }
     }
 }

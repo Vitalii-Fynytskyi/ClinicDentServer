@@ -4,10 +4,9 @@ using System.Globalization;
 
 namespace ClinicDentServer.Models
 {
-    public class Patient
+    public class Patient:BaseModel
     {
-        
-        public int Id { get; set; }
+       
         public string Name { get; set; }
         public string Gender { get; set; }
         public string Phone { get; set; }

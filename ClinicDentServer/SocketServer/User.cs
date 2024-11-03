@@ -419,7 +419,7 @@ namespace ClinicDentServer.SocketServer
 
             ///From ClinicDentUsersContext receive user id
             string email = claimsPrincipal.Identity.Name;
-            ClinicDentUsersContext clinicDentUsersContext = new ClinicDentUsersContext(Startup.Configuration["ConnectionStrings:AllUsers"]);
+            ClinicDentUsersContext clinicDentUsersContext = new ClinicDentUsersContext(Program.Configuration["ConnectionStrings:AllUsers"]);
             DoctorUser doctorUser = clinicDentUsersContext.Doctors.FirstOrDefault(d=>d.Email==email);
             clinicDentUsersContext.Dispose();
 

@@ -1,8 +1,7 @@
 ﻿namespace ClinicDentServer.Models
 {
-    public class ToothUnderObservation
+    public class ToothUnderObservation :BaseModel
     {
-        public int Id { get; set; }
         public int StageId { get; set; }
         public Stage Stage { get; set; } = null!;
         public string ToothName { get; set; }

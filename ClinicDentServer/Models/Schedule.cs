@@ -8,7 +8,7 @@ namespace ClinicDentServer.Models
     {
         Unknown = 0, WillAppear = 1, Refused = 2
     }
-    public class Schedule
+    public class Schedule:BaseModel
     {
         public Schedule()
         {
@@ -35,7 +35,6 @@ namespace ClinicDentServer.Models
             State = scheduleDTO.State;
 
         }
-        public int Id { get; set; }
         public DateTime StartDatetime { get; set; }
         public DateTime EndDatetime { get; set; }
 

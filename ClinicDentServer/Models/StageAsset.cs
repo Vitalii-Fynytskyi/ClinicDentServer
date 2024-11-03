@@ -16,9 +16,8 @@
     /// <summary>
     /// Assets represents additional params of stages such as used materials in work
     /// </summary>
-    public class StageAsset
+    public class StageAsset :BaseModel
     {
-        public int Id { get; set; }
         public AssetType Type { get; set; }
         public string Value { get; set; }
     }

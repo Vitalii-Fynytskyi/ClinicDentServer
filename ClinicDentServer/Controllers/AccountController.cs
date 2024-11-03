@@ -20,7 +20,7 @@ namespace ClinicDentServer.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<DoctorDTO>> Login(LoginModel model)
         {
-            using(ClinicDentUsersContext usersDb = new ClinicDentUsersContext(Startup.Configuration["ConnectionStrings:AllUsers"]))
+            using(ClinicDentUsersContext usersDb = new ClinicDentUsersContext(Program.Configuration["ConnectionStrings:AllUsers"]))
             {
                 DoctorUser doctor = await usersDb.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == model.Email && d.Password == model.Password && d.ConnectionString == model.Tenant);
                 if (doctor != null)
@@ -33,7 +33,7 @@ namespace ClinicDentServer.Controllers
         [HttpGet("tenantNames")]
         public IEnumerable<string> GetTenantConnectionStrings()
         {
-            var connectionStringsSection = Startup.Configuration.GetSection("ConnectionStrings");
+            var connectionStringsSection = Program.Configuration.GetSection("ConnectionStrings");
 
             // Get all connection strings as a dictionary
             var connectionStrings = connectionStringsSection.Get<Dictionary<string, string>>();
@@ -47,12 +47,12 @@ namespace ClinicDentServer.Controllers
         [Produces("text/plain")]
         public ActionResult<string> GetApiVersion()
         {
-            return Ok(Startup.Configuration.GetValue<string>("RequiredClientVersion"));
+            return Ok(Program.Configuration.GetValue<string>("RequiredClientVersion"));
         }
         
         private ActionResult<DoctorDTO> GetDoctorDTO(DoctorUser doctorUser)
         {
-            using(ClinicContext clinicContext = new ClinicContext(Startup.Configuration["ConnectionStrings:" + doctorUser.ConnectionString]))
+            using(ClinicContext clinicContext = new ClinicContext(Program.Configuration["ConnectionStrings:" + doctorUser.ConnectionString]))
             {
                 Doctor doctor = clinicContext.Doctors.Find(doctorUser.InternalId);
                 var identity = GetIdentity(doctorUser);
@@ -77,7 +77,7 @@ namespace ClinicDentServer.Controllers
                 {
                     new Claim(ClaimsIdentity.DefaultNameClaimType, doctor.Email),
                     new Claim(ClaimsIdentity.DefaultRoleClaimType, "Doctor"),
-                    new Claim("ConnectionString",Startup.Configuration["ConnectionStrings:" + doctor.ConnectionString])
+                    new Claim("ConnectionString",Program.Configuration["ConnectionStrings:" + doctor.ConnectionString])
                 };
             ClaimsIdentity claimsIdentity =
             new ClaimsIdentity(claims, "Token", ClaimsIdentity.DefaultNameClaimType, ClaimsIdentity.DefaultRoleClaimType);
