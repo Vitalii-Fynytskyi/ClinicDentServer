@@ -49,7 +49,13 @@ namespace ClinicDentServer.Controllers
         {
             return Ok(Program.Configuration.GetValue<string>("RequiredClientVersion"));
         }
-        
+        [HttpGet("androidAppRequiredVersion")]
+        [Produces("text/plain")]
+        public ActionResult<string> GetAndroidAppRequiredVersion()
+        {
+            return Ok(Program.Configuration.GetValue<string>("AndroidAppRequiredVersion"));
+        }
+
         private ActionResult<DoctorDTO> GetDoctorDTO(DoctorUser doctorUser)
         {
             using(ClinicContext clinicContext = new ClinicContext(Program.Configuration["ConnectionStrings:" + doctorUser.ConnectionString]))

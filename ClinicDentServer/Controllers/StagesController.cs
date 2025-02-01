@@ -114,6 +114,12 @@ namespace ClinicDentServer.Controllers
             DateTime now = DateTime.Now;
             stageToDb.CreatedDateTime = now;
             stageToDb.LastModifiedDateTime = now;
+
+            var toothIds = stageDTO.TeethNumbers;
+            var teeth = teethRepository.Value.dbSet.Where(t => toothIds.Contains((byte)t.Id)).ToList();
+
+            stageToDb.Teeth = teeth;
+
             await stageRepository.Value.Add(stageToDb);
             stageDTO.Id = stageToDb.Id;
             stageDTO.DoctorName = doctor.Name;

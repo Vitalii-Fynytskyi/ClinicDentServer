@@ -82,7 +82,6 @@ namespace ClinicDentServer
                 {
                     throw new InvalidOperationException("Connection string is not available in user claims.");
                 }
-
                 return new ClinicContext(connectionString);
             });
             builder.Services.AddScoped<IDefaultRepository<Cabinet>, DefaultRepository<Cabinet>>();

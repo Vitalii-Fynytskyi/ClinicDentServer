@@ -122,9 +122,11 @@ namespace ClinicDentServer.Models
 
 
             modelBuilder.UseCollation("Cyrillic_General_CI_AS");
-            modelBuilder.Entity<Patient>().HasData(patient);
-            modelBuilder.Entity<Doctor>().HasData(doctor);
-            modelBuilder.Entity<Cabinet>().HasData(cabinet1);
+            modelBuilder.Entity<StageAsset>().ToTable(tb => tb.HasTrigger("StageAssetDeleted"));
+
+            modelBuilder.Entity<Patient>().ToTable(tb => tb.HasTrigger("PatientDeleted")).HasData(patient);
+            modelBuilder.Entity<Doctor>().ToTable(tb => tb.HasTrigger("DoctorDeleted")).HasData(doctor);
+            modelBuilder.Entity<Cabinet>().ToTable(tb => tb.HasTrigger("CabinetDeleted")).HasData(cabinet1);
         }
         protected override void OnConfiguring(DbContextOptionsBuilder dbContextOptionsBuilder)
         {
