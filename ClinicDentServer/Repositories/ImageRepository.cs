@@ -13,7 +13,7 @@ namespace ClinicDentServer.Repositories
 
         public async Task ChangeImageName(int imageId, string newName)
         {
-            await clinicContext.Database.ExecuteSqlAsync($"UPDATE [Images] SET [FileName]='{newName}' WHERE [Id]={imageId}");
+            await clinicContext.Database.ExecuteSqlRawAsync("UPDATE [Images] SET [FileName]={0} WHERE [Id]={1}", newName, imageId);
         }
     }
 }
